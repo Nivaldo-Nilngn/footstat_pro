@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../domain/models/match_record.dart';
 import '../providers/players_provider.dart';
+import '../providers/teams_provider.dart';
 import '../providers/tournaments_provider.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/fixture_generator_dialog.dart';
+import '../widgets/manual_match_schedule_dialog.dart';
 import '../widgets/primary_button.dart';
-import '../widgets/rank_badge.dart';
-import 'activity_details_screen.dart';
+import 'match_fixture_screen.dart';
 
 class TournamentDetailsScreen extends ConsumerStatefulWidget {
   final int tournamentId;
@@ -21,76 +24,18 @@ class TournamentDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScreen> {
-  final TextEditingController _activityNameController = TextEditingController();
-  final TextEditingController _activityLiveController = TextEditingController();
-  String? _selectedNewPlayer;
-
-  @override
-  void dispose() {
-    _activityNameController.dispose();
-    _activityLiveController.dispose();
-    super.dispose();
+  void _openRouletteDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => FixtureGeneratorDialog(tournamentId: widget.tournamentId),
+    );
   }
 
-  void _createActivity() async {
-    final text = _activityNameController.text.trim();
-    final liveUrl = _activityLiveController.text.trim();
-
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Digite o nome para a atividade!')),
-      );
-      return;
-    }
-
-    await ref.read(tournamentsProvider.notifier).createActivity(widget.tournamentId, text);
-
-    if (liveUrl.isNotEmpty) {
-      final tournaments = ref.read(tournamentsProvider);
-      final t = tournaments.firstWhere((item) => item.id == widget.tournamentId);
-      if (t.activities.isNotEmpty) {
-        final lastAct = t.activities.last;
-        await ref.read(tournamentsProvider.notifier).setActivityLiveUrl(
-              widget.tournamentId,
-              lastAct.id,
-              liveUrl,
-            );
-      }
-    }
-
-    _activityNameController.clear();
-    _activityLiveController.clear();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Atividade "$text" criada com sucesso!')),
-      );
-    }
-  }
-
-  void _addPlayerToTournament(List<String> availablePlayers) async {
-    if (_selectedNewPlayer == null || _selectedNewPlayer!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecione um jogador válido!')),
-      );
-      return;
-    }
-
-    await ref.read(tournamentsProvider.notifier).addPlayerToTournament(
-          widget.tournamentId,
-          _selectedNewPlayer!,
-        );
-
-    final added = _selectedNewPlayer;
-    setState(() {
-      _selectedNewPlayer = null;
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Jogador "$added" adicionado ao torneio!')),
-      );
-    }
+  void _openManualScheduleDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => ManualMatchScheduleDialog(tournamentId: widget.tournamentId),
+    );
   }
 
   void _finishTournament(String name) async {
@@ -100,7 +45,7 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
         backgroundColor: AppColors.cardBackground,
         title: const Text('Finalizar Torneio', style: TextStyle(color: AppColors.danger)),
         content: Text(
-          'Tem certeza que deseja finalizar o torneio "$name"? Não será mais possível adicionar atividades ou alterar partidas.',
+          'Tem certeza que deseja finalizar o torneio "$name"? Não será mais possível adicionar partidas.',
           style: const TextStyle(color: AppColors.text),
         ),
         actions: [
@@ -130,7 +75,7 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
   @override
   Widget build(BuildContext context) {
     final tournaments = ref.watch(tournamentsProvider);
-    final globalPlayers = ref.watch(playersProvider);
+    final teams = ref.watch(teamsProvider);
 
     final tList = tournaments.where((item) => item.id == widget.tournamentId).toList();
     if (tList.isEmpty) {
@@ -143,48 +88,20 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
     final t = tList.first;
     final isFinished = t.isFinished;
 
-    final totals = <String, Map<String, int>>{};
-    for (final p in t.playerNames) {
-      totals[p] = {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0};
-    }
-
+    // Collect all matches across activities
+    final List<Map<String, dynamic>> allMatches = [];
     for (final act in t.activities) {
-      if (act.mvp.isNotEmpty && totals.containsKey(act.mvp)) {
-        totals[act.mvp]!['mvps'] = (totals[act.mvp]!['mvps'] ?? 0) + 1;
-      }
-      for (final pName in act.participants) {
-        if (totals.containsKey(pName)) {
-          totals[pName]!['matches'] = (totals[pName]!['matches'] ?? 0) + 1;
-        }
-      }
       for (final m in act.matches) {
-        m.stats.forEach((pName, s) {
-          if (totals.containsKey(pName)) {
-            totals[pName]!['goals'] = (totals[pName]!['goals'] ?? 0) + s.goals;
-            totals[pName]!['assists'] = (totals[pName]!['assists'] ?? 0) + s.assists;
-          }
+        allMatches.add({
+          'activityId': act.id,
+          'activityName': act.name,
+          'match': m,
         });
       }
     }
 
-    int maxGoals = -1; String? topGoalsPlayer;
-    int maxAssists = -1; String? topAssistsPlayer;
-    int maxMatches = -1; String? topMatchesPlayer;
-    int maxMvps = -1; String? topMvpPlayer;
-
-    if (isFinished) {
-      for (final pName in t.playerNames) {
-        final p = totals[pName]!;
-        if (p['goals']! > maxGoals && p['goals']! > 0) { maxGoals = p['goals']!; topGoalsPlayer = pName; }
-        if (p['assists']! > maxAssists && p['assists']! > 0) { maxAssists = p['assists']!; topAssistsPlayer = pName; }
-        if (p['matches']! > maxMatches && p['matches']! > 0) { maxMatches = p['matches']!; topMatchesPlayer = pName; }
-        if (p['mvps']! > maxMvps && p['mvps']! > 0) { maxMvps = p['mvps']!; topMvpPlayer = pName; }
-      }
-    }
-
-    final availablePlayers = globalPlayers.where((gp) => !t.playerNames.contains(gp)).toList();
-
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text('🏆 ${t.name}'),
       ),
@@ -200,15 +117,15 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                   decoration: BoxDecoration(
                     color: AppColors.dangerBg,
                     border: Border.all(color: AppColors.danger),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Row(
-                    children: const [
+                  child: const Row(
+                    children: [
                       Icon(Icons.lock, color: AppColors.danger),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'ESTE TORNEIO FOI FINALIZADO!\nNão é mais possível registrar partidas ou alterar dados.',
+                          'ESTE TORNEIO FOI FINALIZADO!\nNão é mais possível registrar partidas.',
                           style: TextStyle(
                             color: AppColors.danger,
                             fontWeight: FontWeight.bold,
@@ -222,276 +139,275 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                 const SizedBox(height: 16),
               ],
 
-              // Card de criação de atividade com Live Link
+              // CTA Action Buttons: Sorteio Roleta + Agendar Confronto
               if (!isFinished) ...[
                 CustomCard(
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        '📅 Nova Atividade / Rodada (Evento)',
+                        '🛡️ PAINEL DE GESTÃO DE CONFRONTOS',
                         style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _activityNameController,
-                        decoration: const InputDecoration(
-                          hintText: 'Nome (Ex: Rodada #1 - Quinta)',
-                        ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Sorteie a tabela de jogos com animação de roleta ou agende confrontos entre os times com data, horário e local de campo!',
+                        style: TextStyle(color: AppColors.subtext, fontSize: 11),
                       ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _activityLiveController,
-                        decoration: const InputDecoration(
-                          hintText: 'Link da Live (Opcional - YouTube, Twitch, etc.)',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      PrimaryButton(
-                        label: 'Criar Atividade com Transmissão',
-                        icon: Icons.add,
-                        onPressed: _createActivity,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
-                if (availablePlayers.isNotEmpty) ...[
-                  CustomCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '➕ Adicionar Jogador ao Torneio',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedNewPlayer,
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                ),
-                                dropdownColor: AppColors.cardBackground,
-                                hint: const Text('Selecione jogador...'),
-                                items: availablePlayers.map((p) {
-                                  return DropdownMenuItem(
-                                    value: p,
-                                    child: Text(p, style: const TextStyle(color: AppColors.text)),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  setState(() {
-                                    _selectedNewPlayer = val;
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            PrimaryButton(
-                              label: 'Adicionar',
-                              isFullWidth: false,
-                              onPressed: () => _addPlayerToTournament(availablePlayers),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ],
-
-              const Text(
-                '📊 Estatísticas do Torneio',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              CustomCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: t.playerNames.map((pName) {
-                    final p = totals[pName] ?? {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0};
-
-                    RankType? rankType;
-                    String? rankLabel;
-
-                    if (isFinished) {
-                      if (pName == topGoalsPlayer) {
-                        rankType = RankType.goals;
-                        rankLabel = 'Artilheiro (${p['goals']} Gols)';
-                      } else if (pName == topAssistsPlayer) {
-                        rankType = RankType.assists;
-                        rankLabel = 'Garçom (${p['assists']} Assist)';
-                      } else if (pName == topMatchesPlayer) {
-                        rankType = RankType.matches;
-                        rankLabel = 'Maratonista (${p['matches']} Jogos)';
-                      } else if (pName == topMvpPlayer) {
-                        rankType = RankType.mvp;
-                        rankLabel = 'Melhor Jogador (${p['mvps']} MVPs)';
-                      }
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6.0),
-                      child: Row(
+                      Row(
                         children: [
                           Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  pName,
-                                  style: const TextStyle(
-                                    color: AppColors.text,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                if (rankType != null && rankLabel != null) ...[
-                                  const SizedBox(height: 2),
-                                  RankBadge(type: rankType, label: rankLabel),
-                                ],
-                              ],
+                            child: ElevatedButton.icon(
+                              onPressed: _openRouletteDialog,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.gold,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              icon: const Icon(Icons.casino, color: Colors.black, size: 18),
+                              label: const Text(
+                                '🎰 Sorteio (Roleta)',
+                                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 10),
                           Expanded(
-                            flex: 4,
-                            child: Text(
-                              '🎮 ${p['matches']} J | ⚽ ${p['goals']} G | 👟 ${p['assists']} A | ⭐ ${p['mvps']} MVP',
-                              textAlign: TextAlign.end,
-                              style: const TextStyle(
-                                color: AppColors.subtext,
-                                fontSize: 12,
+                            child: ElevatedButton.icon(
+                              onPressed: _openManualScheduleDialog,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              icon: const Icon(Icons.calendar_month, color: Colors.black, size: 18),
+                              label: const Text(
+                                '📅 Agendar Jogo',
+                                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
                               ),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }).toList(),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
+              ],
 
-              const Text(
-                '📅 Atividades / Rodadas',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              if (t.activities.isEmpty)
-                const CustomCard(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text(
-                        'Nenhuma atividade cadastrada neste torneio.',
-                        style: TextStyle(color: AppColors.subtext),
-                      ),
+              // Fixtures Section Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '⚔️ TABELA DE CONFRONTOS DO TORNEIO',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      letterSpacing: 0.5,
                     ),
+                  ),
+                  Text(
+                    '${allMatches.length} Partidas',
+                    style: const TextStyle(color: AppColors.subtext, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              if (allMatches.isEmpty)
+                CustomCard(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: const [
+                      Icon(Icons.sports_soccer, color: AppColors.subtext, size: 44),
+                      SizedBox(height: 10),
+                      Text('Nenhum confronto agendado.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 4),
+                      Text(
+                        'Clique em "🎰 Sorteio (Roleta)" ou "📅 Agendar Jogo" acima para definir as partidas do torneio!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.subtext, fontSize: 12),
+                      ),
+                    ],
                   ),
                 )
               else
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: t.activities.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemCount: allMatches.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final act = t.activities[index];
+                    final item = allMatches[index];
+                    final actId = item['activityId'] as int;
+                    final m = item['match'] as MatchRecord;
+
+                    final teamAName = m.teamAName.isNotEmpty ? m.teamAName : 'Time A';
+                    final teamBName = m.teamBName.isNotEmpty ? m.teamBName : 'Time B';
+
+                    // Compute Goals per team
+                    int goalsA = 0;
+                    int goalsB = 0;
+                    if (m.teamAPlayers.isNotEmpty || m.teamBPlayers.isNotEmpty) {
+                      for (final p in m.teamAPlayers) {
+                        goalsA += m.stats[p]?.goals ?? 0;
+                      }
+                      for (final p in m.teamBPlayers) {
+                        goalsB += m.stats[p]?.goals ?? 0;
+                      }
+                    } else {
+                      m.stats.forEach((key, val) {
+                        goalsA += val.goals;
+                      });
+                    }
+
+                    final isMatchFinished = m.status == 'finished' || m.timelineEvents.isNotEmpty || goalsA > 0 || goalsB > 0;
+
                     return CustomCard(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ActivityDetailsScreen(
-                              tournamentId: t.id,
-                              activityId: act.id,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Row(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                          // Date, Time & Location Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, color: AppColors.subtext, size: 12),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    m.matchDate.isNotEmpty ? '${m.matchDate} às ${m.matchTime}' : m.time,
+                                    style: const TextStyle(color: AppColors.subtext, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              if (m.location.isNotEmpty)
                                 Row(
                                   children: [
+                                    const Icon(Icons.location_on, color: AppColors.primary, size: 12),
+                                    const SizedBox(width: 4),
                                     Text(
-                                      '📅 ${act.name}',
-                                      style: const TextStyle(
-                                        color: AppColors.text,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
+                                      m.location,
+                                      style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
                                     ),
-                                    if (act.liveUrl.isNotEmpty) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.danger,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text(
-                                          '🔴 LIVE',
-                                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
-                                    if (act.isFinished) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.dangerBg,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text(
-                                          'FINALIZADA',
-                                          style: TextStyle(color: AppColors.danger, fontSize: 9, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${act.participants.length} Presentes | ${act.matches.length} Partidas',
-                                  style: const TextStyle(color: AppColors.subtext, fontSize: 12),
+                            ],
+                          ),
+                          const Divider(color: AppColors.border, height: 20),
+
+                          // Matchup Visualizer (Team A vs Team B)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              // Team A
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: AppColors.primary, width: 2),
+                                      ),
+                                      child: const Icon(Icons.shield, color: AppColors.primary, size: 22),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      teamAName,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
                                 ),
-                                if (act.mvp.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  RankBadge(type: RankType.mvp, label: 'MVP: ${act.mvp}'),
-                                ],
-                              ],
+                              ),
+
+                              // Scoreboard / VS
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceHigh,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: isMatchFinished ? AppColors.gold : AppColors.border),
+                                ),
+                                child: Text(
+                                  isMatchFinished ? '$goalsA  x  $goalsB' : 'VS',
+                                  style: TextStyle(
+                                    color: isMatchFinished ? AppColors.gold : AppColors.subtext,
+                                    fontSize: isMatchFinished ? 20 : 14,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+
+                              // Team B
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.secondary.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: AppColors.secondary, width: 2),
+                                      ),
+                                      child: const Icon(Icons.shield, color: AppColors.secondary, size: 22),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      teamBName,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // CTA Button to Start Match Fixture
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => MatchFixtureScreen(
+                                    tournamentId: t.id,
+                                    activityId: actId,
+                                  ),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 42),
+                              backgroundColor: isMatchFinished ? AppColors.surfaceHigh : AppColors.primary,
+                            ),
+                            icon: Icon(
+                              isMatchFinished ? Icons.description : Icons.sports_soccer,
+                              color: isMatchFinished ? Colors.white : Colors.black,
+                              size: 18,
+                            ),
+                            label: Text(
+                              isMatchFinished ? 'Ver Súmula da Partida' : '⚽ Iniciar Partida / Arbitrar',
+                              style: TextStyle(
+                                color: isMatchFinished ? Colors.white : Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 16),
                         ],
                       ),
                     );

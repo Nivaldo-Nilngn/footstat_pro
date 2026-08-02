@@ -19,7 +19,7 @@ class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with Si
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -31,8 +31,9 @@ class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with Si
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('📊 Estatísticas Gerais'),
+        title: const Text('📊 Estatísticas Gerais & Analytics'),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,
@@ -41,6 +42,7 @@ class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with Si
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           tabs: const [
             Tab(text: '📜 Histórico Geral'),
+            Tab(text: '📈 Gráficos & Analytics'),
             Tab(text: '🏆 Por Torneio'),
           ],
         ),
@@ -49,6 +51,7 @@ class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with Si
         controller: _tabController,
         children: const [
           _AllTimeHistoryTab(),
+          _AnalyticsChartsTab(),
           _ByTournamentTab(),
         ],
       ),
@@ -130,7 +133,7 @@ class _AllTimeHistoryTab extends ConsumerWidget {
                       Text(
                         '#${index + 1}',
                         style: TextStyle(
-                          color: index == 0 ? AppColors.badgeGoals : AppColors.subtext,
+                          color: index == 0 ? AppColors.gold : AppColors.subtext,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -150,6 +153,178 @@ class _AllTimeHistoryTab extends ConsumerWidget {
                   ),
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyticsChartsTab extends ConsumerWidget {
+  const _AnalyticsChartsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final globalPlayers = ref.watch(playersProvider);
+    final tournaments = ref.watch(tournamentsProvider);
+
+    final totals = <String, Map<String, int>>{};
+    for (final p in globalPlayers) {
+      totals[p] = {'goals': 0, 'assists': 0, 'mvps': 0};
+    }
+
+    for (final t in tournaments) {
+      for (final act in t.activities) {
+        if (act.mvp.isNotEmpty) {
+          totals.putIfAbsent(act.mvp, () => {'goals': 0, 'assists': 0, 'mvps': 0});
+          totals[act.mvp]!['mvps'] = (totals[act.mvp]!['mvps'] ?? 0) + 1;
+        }
+        for (final m in act.matches) {
+          m.stats.forEach((pName, s) {
+            totals.putIfAbsent(pName, () => {'goals': 0, 'assists': 0, 'mvps': 0});
+            totals[pName]!['goals'] = (totals[pName]!['goals'] ?? 0) + s.goals;
+            totals[pName]!['assists'] = (totals[pName]!['assists'] ?? 0) + s.assists;
+          });
+        }
+      }
+    }
+
+    // Top 5 Goals
+    final topGoals = totals.entries.toList()
+      ..sort((a, b) => b.value['goals']!.compareTo(a.value['goals']!));
+    final top5Goals = topGoals.take(5).where((e) => e.value['goals']! > 0).toList();
+
+    // Top 5 Assists
+    final topAssists = totals.entries.toList()
+      ..sort((a, b) => b.value['assists']!.compareTo(a.value['assists']!));
+    final top5Assists = topAssists.take(5).where((e) => e.value['assists']! > 0).toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Artilheiros Chart Card
+          CustomCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.sports_soccer, color: AppColors.gold, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'TOP 5 ARTILHEIROS DA HISTÓRIA',
+                      style: TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (top5Goals.isEmpty)
+                  const Text('Nenhum gol registrado ainda.', style: TextStyle(color: AppColors.subtext, fontSize: 12))
+                else
+                  ...top5Goals.map((entry) {
+                    final maxG = top5Goals.first.value['goals']!;
+                    final ratio = maxG == 0 ? 0.0 : entry.value['goals']! / maxG;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(entry.key, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('${entry.value['goals']!} Gols', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: SizedBox(
+                              height: 10,
+                              child: LinearProgressIndicator(
+                                value: ratio,
+                                backgroundColor: AppColors.surfaceHigh,
+                                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.gold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Top Garçons Chart Card
+          CustomCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.sports_score, color: AppColors.secondary, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'TOP 5 GARÇONS (ASSISTÊNCIAS)',
+                      style: TextStyle(
+                        color: AppColors.secondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (top5Assists.isEmpty)
+                  const Text('Nenhuma assistência registrada ainda.', style: TextStyle(color: AppColors.subtext, fontSize: 12))
+                else
+                  ...top5Assists.map((entry) {
+                    final maxA = top5Assists.first.value['assists']!;
+                    final ratio = maxA == 0 ? 0.0 : entry.value['assists']! / maxA;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(entry.key, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('${entry.value['assists']!} Assists', style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: SizedBox(
+                              height: 10,
+                              child: LinearProgressIndicator(
+                                value: ratio,
+                                backgroundColor: AppColors.surfaceHigh,
+                                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
             ),
           ),
         ],
@@ -233,7 +408,7 @@ class _ByTournamentTab extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.dangerBg,
+                        color: AppColors.danger.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text('FINALIZADO', style: TextStyle(color: AppColors.danger, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -271,7 +446,7 @@ class _ByTournamentTab extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(pName, style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 14)),
+                            Text(pName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                             if (rankType != null && rankLabel != null) ...[
                               const SizedBox(height: 2),
                               RankBadge(type: rankType, label: rankLabel),

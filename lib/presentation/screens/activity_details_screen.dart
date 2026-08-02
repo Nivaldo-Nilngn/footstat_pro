@@ -6,7 +6,9 @@ import '../providers/tournaments_provider.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/rank_badge.dart';
+import '../widgets/mvp_card_dialog.dart';
 import 'register_match_screen.dart';
+import 'match_fixture_screen.dart';
 
 class ActivityDetailsScreen extends ConsumerStatefulWidget {
   final int tournamentId;
@@ -253,22 +255,54 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Botão Registrar Partida
+              // Botão Registrar Partida & Simular
               if (!isActFinished) ...[
-                PrimaryButton(
-                  label: '⚽ Registrar Nova Partida',
-                  icon: Icons.sports_soccer,
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RegisterMatchScreen(
-                          tournamentId: widget.tournamentId,
-                          activityId: widget.activityId,
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: PrimaryButton(
+                        label: '⚽ Registrar Partida',
+                        icon: Icons.sports_soccer,
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MatchFixtureScreen(
+                                tournamentId: widget.tournamentId,
+                                activityId: widget.activityId,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 1,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await ref.read(tournamentsProvider.notifier).simulateMatch(
+                                widget.tournamentId,
+                                widget.activityId,
+                              );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('⚡ Partida simulada com sucesso!'),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.flash_on, color: AppColors.gold, size: 18),
+                        label: const Text('Simular', style: TextStyle(color: AppColors.gold)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.gold),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],
@@ -278,13 +312,65 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '⭐ Escolha do MVP da Atividade',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '⭐ Escolha do MVP da Atividade',
+                          style: TextStyle(
+                            color: AppColors.gold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (act.mvp.isNotEmpty)
+                          InkWell(
+                            onTap: () {
+                              int mvpGoals = 0;
+                              int mvpAssists = 0;
+                              int mvpWins = 0;
+                              final totalM = act.matches.length;
+
+                              for (final m in act.matches) {
+                                if (m.stats.containsKey(act.mvp)) {
+                                  mvpGoals += m.stats[act.mvp]?.goals ?? 0;
+                                  mvpAssists += m.stats[act.mvp]?.assists ?? 0;
+                                }
+                              }
+
+                              showDialog(
+                                context: context,
+                                builder: (_) => MvpCardDialog(
+                                  playerName: act.mvp,
+                                  titleName: 'CRAQUE DA RODADA',
+                                  goals: mvpGoals,
+                                  assists: mvpAssists,
+                                  wins: mvpWins,
+                                  totalMatches: totalM,
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.gold.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.gold.withOpacity(0.4)),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.emoji_events, color: AppColors.gold, size: 14),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Ver Card do MVP',
+                                    style: TextStyle(color: AppColors.gold, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(

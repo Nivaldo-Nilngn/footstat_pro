@@ -4,11 +4,16 @@ import '../../core/constants/app_colors.dart';
 import '../providers/players_provider.dart';
 import '../providers/tournaments_provider.dart';
 import '../widgets/custom_card.dart';
+import '../widgets/team_draft_dialog.dart';
+import '../widgets/floating_live_match_player.dart';
 import 'competitors_screen.dart';
+import 'teams_management_screen.dart';
 import 'create_tournament_screen.dart';
 import 'tournaments_list_screen.dart';
 import 'lives_gallery_screen.dart';
 import 'general_stats_screen.dart';
+import 'matches_calendar_screen.dart';
+import 'hall_of_fame_screen.dart';
 import 'backup_screen.dart';
 
 enum ActiveTab {
@@ -17,6 +22,8 @@ enum ActiveTab {
   tournaments,
   lives,
   stats,
+  calendar,
+  hallOfFame,
   backup,
   createTournament,
 }
@@ -105,17 +112,22 @@ class MainShellScreen extends ConsumerWidget {
                 ),
               ],
             ),
-      body: Row(
+      body: Stack(
         children: [
-          if (isDesktop) const _DesktopSidebar(),
-          Expanded(
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: _buildActiveScreen(activeTab, ref),
+          Row(
+            children: [
+              if (isDesktop) const _DesktopSidebar(),
+              Expanded(
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: _buildActiveScreen(activeTab, ref),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          const FloatingLiveMatchPlayer(),
         ],
       ),
       bottomNavigationBar: isDesktop ? null : const _MobileBottomBar(),
@@ -127,13 +139,17 @@ class MainShellScreen extends ConsumerWidget {
       case ActiveTab.dashboard:
         return const DashboardView();
       case ActiveTab.competitors:
-        return const CompetitorsScreen();
+        return const TeamsManagementScreen();
       case ActiveTab.tournaments:
         return const TournamentsListScreen();
       case ActiveTab.lives:
         return const LivesGalleryScreen();
       case ActiveTab.stats:
         return const GeneralStatsScreen();
+      case ActiveTab.calendar:
+        return const MatchesCalendarScreen();
+      case ActiveTab.hallOfFame:
+        return const HallOfFameScreen();
       case ActiveTab.backup:
         return const BackupScreen();
       case ActiveTab.createTournament:
@@ -232,8 +248,14 @@ class _DesktopSidebar extends ConsumerWidget {
                   onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.dashboard,
                 ),
                 _SidebarNavBtn(
-                  icon: Icons.groups_outlined,
-                  label: 'Competidores',
+                  icon: Icons.calendar_month_outlined,
+                  label: 'Calendário & Súmulas',
+                  isSelected: activeTab == ActiveTab.calendar,
+                  onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.calendar,
+                ),
+                _SidebarNavBtn(
+                  icon: Icons.shield_outlined,
+                  label: 'Banco de Times',
                   isSelected: activeTab == ActiveTab.competitors,
                   onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.competitors,
                 ),
@@ -242,6 +264,12 @@ class _DesktopSidebar extends ConsumerWidget {
                   label: 'Meus Torneios',
                   isSelected: activeTab == ActiveTab.tournaments,
                   onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.tournaments,
+                ),
+                _SidebarNavBtn(
+                  icon: Icons.workspace_premium_outlined,
+                  label: 'Hall da Fama',
+                  isSelected: activeTab == ActiveTab.hallOfFame,
+                  onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.hallOfFame,
                 ),
                 _SidebarNavBtn(
                   icon: Icons.videocam_outlined,
@@ -519,11 +547,29 @@ class DashboardView extends ConsumerWidget {
                       label: const Text('Criar Torneio'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => ref.read(activeTabProvider.notifier).state = ActiveTab.lives,
-                      icon: const Icon(Icons.videocam, color: AppColors.danger, size: 20),
-                      label: const Text('Ver Lives das Partidas', style: TextStyle(color: AppColors.danger)),
+                      onPressed: () async {
+                        await ref.read(tournamentsProvider.notifier).simulateFullTournamentDemo();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('⚡ Torneio completo simulado com sucesso!'),
+                              backgroundColor: AppColors.primary,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.flash_on, color: AppColors.gold, size: 18),
+                      label: const Text('Simular Torneio Demo', style: TextStyle(color: AppColors.gold)),
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppColors.danger.withOpacity(0.5)),
+                        side: const BorderSide(color: AppColors.gold),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => ref.read(activeTabProvider.notifier).state = ActiveTab.lives,
+                      icon: const Icon(Icons.videocam, color: AppColors.danger, size: 18),
+                      label: const Text('Ver Lives das Partidas', style: TextStyle(color: Colors.white)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.border),
                       ),
                     ),
                   ],
@@ -618,7 +664,7 @@ class DashboardView extends ConsumerWidget {
           // Quick Access Grid Cards
           GridView(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isWide ? 4 : 2,
+              crossAxisCount: isWide ? 3 : 2,
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
               mainAxisExtent: 135,
@@ -626,6 +672,29 @@ class DashboardView extends ConsumerWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: [
+              _QuickCard(
+                icon: Icons.casino,
+                title: 'Sorteio de Times',
+                description: 'Gerador e balanceamento automático de times para pelada.',
+                color: AppColors.gold,
+                onTap: () {
+                  final players = globalPlayers;
+                  showDialog(
+                    context: context,
+                    builder: (_) => TeamDraftDialog(
+                      availablePlayers: players,
+                      tournaments: tournaments,
+                    ),
+                  );
+                },
+              ),
+              _QuickCard(
+                icon: Icons.calendar_month,
+                title: 'Calendário & Súmulas',
+                description: 'Consulte os placares, datas, tempo e súmulas dos confrontos.',
+                color: AppColors.tertiary,
+                onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.calendar,
+              ),
               _QuickCard(
                 icon: Icons.person_add,
                 title: 'Competidores',

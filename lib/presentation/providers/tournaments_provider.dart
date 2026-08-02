@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/storage_repository.dart';
 import '../../domain/models/tournament.dart';
@@ -69,6 +70,58 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
     state = state.map((t) {
       if (t.id == tournamentId) {
         return t.copyWith(status: 'finished');
+      }
+      return t;
+    }).toList();
+
+    await _save();
+  }
+
+  Future<void> addScheduledMatch({
+    required int tournamentId,
+    required String teamAName,
+    required String teamBName,
+    required List<String> teamAPlayers,
+    required List<String> teamBPlayers,
+    required String matchDate,
+    required String matchTime,
+    required String location,
+  }) async {
+    state = state.map((t) {
+      if (t.id == tournamentId && !t.isFinished) {
+        final newMatch = MatchRecord(
+          id: DateTime.now().millisecondsSinceEpoch + Random().nextInt(1000),
+          time: '$matchDate $matchTime',
+          teamAName: teamAName,
+          teamBName: teamBName,
+          teamAPlayers: teamAPlayers,
+          teamBPlayers: teamBPlayers,
+          matchDate: matchDate,
+          matchTime: matchTime,
+          location: location,
+          status: 'scheduled',
+          stats: {},
+        );
+
+        List<Activity> updatedActivities;
+        if (t.activities.isEmpty) {
+          final act = Activity(
+            id: DateTime.now().millisecondsSinceEpoch,
+            name: 'Tabela de Confrontos',
+            participants: List.from(t.playerNames),
+            matches: [newMatch],
+          );
+          updatedActivities = [act];
+        } else {
+          updatedActivities = t.activities.map((a) {
+            if (a.id == t.activities.last.id) {
+              return a.copyWith(matches: [...a.matches, newMatch]);
+            }
+            return a;
+          }).toList();
+        }
+
+        return t.copyWith(activities: updatedActivities);
       }
       return t;
     }).toList();
@@ -200,6 +253,114 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
       }
       return t;
     }).toList();
+
+    await _save();
+  }
+
+  Future<void> simulateMatch(int tournamentId, int activityId) async {
+    final rand = Random();
+    final tList = state.where((t) => t.id == tournamentId).toList();
+    if (tList.isEmpty) return;
+
+    final t = tList.first;
+    final actList = t.activities.where((a) => a.id == activityId).toList();
+    if (actList.isEmpty) return;
+
+    final act = actList.first;
+    final players = act.participants.isNotEmpty ? act.participants : t.playerNames;
+    if (players.isEmpty) return;
+
+    final Map<String, MatchStats> stats = {};
+    for (final p in players) {
+      stats[p] = const MatchStats();
+    }
+
+    // Random goals (1 to 6 total goals)
+    final totalGoals = rand.nextInt(5) + 1;
+    for (int i = 0; i < totalGoals; i++) {
+      final scorer = players[rand.nextInt(players.length)];
+      final current = stats[scorer]!;
+      final timestamps = List<int>.from(current.goalTimestamps)..add(rand.nextInt(900));
+
+      stats[scorer] = current.copyWith(
+        goals: current.goals + 1,
+        goalTimestamps: timestamps,
+      );
+
+      // 60% chance of assist by a teammate
+      if (rand.nextDouble() > 0.4 && players.length > 1) {
+        final assistants = players.where((p) => p != scorer).toList();
+        final assistant = assistants[rand.nextInt(assistants.length)];
+        final currentA = stats[assistant]!;
+        stats[assistant] = currentA.copyWith(assists: currentA.assists + 1);
+      }
+    }
+
+    // 20% chance of yellow card
+    if (rand.nextDouble() > 0.8) {
+      final carded = players[rand.nextInt(players.length)];
+      final currentC = stats[carded]!;
+      stats[carded] = currentC.copyWith(yellowCards: currentC.yellowCards + 1);
+    }
+
+    await saveMatch(tournamentId, activityId, stats);
+  }
+
+  Future<void> simulateFullTournamentDemo() async {
+    final rand = Random();
+    final demoPlayers = ['Ninho', 'Cristiano', 'Messi', 'Neymar', 'Vinicius Jr', 'Haaland'];
+    final tId = DateTime.now().millisecondsSinceEpoch;
+
+    // 1. Create Tournament
+    final newTournament = Tournament(
+      id: tId,
+      name: 'Super Copa dos Campeões (Simulado)',
+      status: 'active',
+      playerNames: List.from(demoPlayers),
+      activities: [],
+    );
+
+    state = [...state, newTournament];
+
+    // 2. Create 3 rounds
+    final actNames = ['1ª Rodada - Abertura', '2ª Rodada - Clássico', '3ª Rodada - Grande Final'];
+    for (int r = 0; r < 3; r++) {
+      final actId = DateTime.now().millisecondsSinceEpoch + r * 100;
+      final act = Activity(
+        id: actId,
+        name: actNames[r],
+        status: r == 2 ? 'finished' : 'active',
+        mvp: demoPlayers[rand.nextInt(demoPlayers.length)],
+        liveUrl: 'https://youtube.com/watch?v=demo_live_$r',
+        participants: List.from(demoPlayers),
+        matches: [],
+      );
+
+      // Add 2 matches per round
+      final matches = <MatchRecord>[];
+      for (int m = 0; m < 2; m++) {
+        final mStats = <String, MatchStats>{};
+        for (final p in demoPlayers) {
+          final g = rand.nextInt(3);
+          final a = rand.nextInt(2);
+          final y = rand.nextDouble() > 0.85 ? 1 : 0;
+          mStats[p] = MatchStats(goals: g, assists: a, yellowCards: y);
+        }
+        matches.add(MatchRecord(
+          id: DateTime.now().millisecondsSinceEpoch + r * 1000 + m,
+          time: 'Rodada ${r + 1} - J$m',
+          stats: mStats,
+        ));
+      }
+
+      final updatedAct = act.copyWith(matches: matches);
+      state = state.map((t) {
+        if (t.id == tId) {
+          return t.copyWith(activities: [...t.activities, updatedAct]);
+        }
+        return t;
+      }).toList();
+    }
 
     await _save();
   }
