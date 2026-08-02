@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FootStat Pro - Elite Analytics & Tournament Manager</title>
+  
+  <!-- Tailwind CSS CDN + Google Fonts + Material Symbols -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#0b1326",
+            "surface": "#0b1326",
+            "surface-card": "#171f33",
+            "surface-high": "#222a3d",
+            "surface-variant": "#2d3449",
+            "primary": "#4edea3",
+            "primary-hover": "#36c78e",
+            "primary-dark": "#00422b",
+            "secondary": "#3b82f6",
+            "tertiary": "#a855f7",
+            "danger": "#ff4d4d",
+            "gold": "#ffd700",
+            "border-dark": "#2d384e",
+            "text-main": "#dae2fd",
+            "text-sub": "#94a3b8"
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b1326;
+      color: #dae2fd;
+    }
+
+    .glass-card {
+      background: rgba(23, 31, 51, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glow-primary {
+      box-shadow: 0 0 25px -5px rgba(78, 222, 163, 0.35);
+    }
+
+    .glow-danger {
+      box-shadow: 0 0 25px -5px rgba(255, 77, 77, 0.4);
+    }
+
+    .page {
+      display: none;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1326;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #222a3d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4edea3;
+    }
+  </style>
+</head>
+<body class="bg-background text-text-main min-h-screen flex flex-col md:flex-row antialiased selection:bg-primary selection:text-black">
+
+  <!-- 📱 MOBILE TOP NAV -->
+  <nav class="md:hidden fixed top-0 left-0 right-0 h-16 bg-surface-card border-b border-border-dark flex items-center justify-between px-4 z-50">
+    <div class="flex items-center gap-2 cursor-pointer" onclick="showPage('page-home')">
+      <div class="w-9 h-9 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-primary">
+        <span class="material-symbols-outlined text-2xl">sports_soccer</span>
+      </div>
+      <span class="text-lg font-black tracking-tight text-white">FootStat <span class="text-primary">Pro</span></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="showPage('page-lives')" class="p-2 rounded-full bg-danger/20 text-danger border border-danger/40 transition-colors flex items-center gap-1 text-xs font-bold">
+        <span class="w-2 h-2 rounded-full bg-danger animate-ping"></span> 🔴 LIVES
+      </button>
+    </div>
+  </nav>
+
+  <!-- 📱 MOBILE BOTTOM NAV -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-card/95 backdrop-blur-md border-t border-border-dark flex justify-around items-center z-50 px-1">
+    <button onclick="showPage('page-home')" id="mobile-nav-home" class="mobile-nav-btn flex flex-col items-center justify-center w-full h-full text-primary font-semibold text-xs">
+      <span class="material-symbols-outlined text-xl">home</span>
+      <span>Início</span>
+    </button>
+    <button onclick="showPage('page-competidores')" id="mobile-nav-competidores" class="mobile-nav-btn flex flex-col items-center justify-center w-full h-full text-text-sub hover:text-white text-xs">
+      <span class="material-symbols-outlined text-xl">groups</span>
+      <span>Jogadores</span>
+    </button>
+    <button onclick="showPage('page-meus-torneios')" id="mobile-nav-torneios" class="mobile-nav-btn flex flex-col items-center justify-center w-full h-full text-text-sub hover:text-white text-xs">
+      <span class="material-symbols-outlined text-xl">emoji_events</span>
+      <span>Torneios</span>
+    </button>
+    <button onclick="showPage('page-lives')" id="mobile-nav-lives" class="mobile-nav-btn flex flex-col items-center justify-center w-full h-full text-text-sub hover:text-white text-xs">
+      <span class="material-symbols-outlined text-xl">videocam</span>
+      <span>Lives</span>
+    </button>
+    <button onclick="showPage('page-estatisticas-gerais')" id="mobile-nav-stats" class="mobile-nav-btn flex flex-col items-center justify-center w-full h-full text-text-sub hover:text-white text-xs">
+      <span class="material-symbols-outlined text-xl">leaderboard</span>
+      <span>Stats</span>
+    </button>
+  </nav>
+
+  <!-- 🖥️ DESKTOP SIDEBAR -->
+  <aside class="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 bg-surface-card border-r border-border-dark p-5 z-40">
+    <div class="flex items-center gap-3 mb-8 cursor-pointer" onclick="showPage('page-home')">
+      <div class="w-10 h-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary glow-primary">
+        <span class="material-symbols-outlined text-2xl">sports_soccer</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-black text-white tracking-tight leading-none">FootStat <span class="text-primary">Pro</span></h1>
+        <span class="text-[11px] text-text-sub font-medium tracking-wider uppercase">Elite Football Analytics</span>
+      </div>
+    </div>
+
+    <!-- Quick Action -->
+    <button onclick="showPage('page-criar-torneio')" class="w-full bg-primary hover:bg-primary-hover text-black font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all transform active:scale-95 glow-primary mb-6">
+      <span class="material-symbols-outlined font-bold">add_circle</span>
+      <span>Novo Torneio</span>
+    </button>
+
+    <!-- Menu Links -->
+    <nav class="flex-1 space-y-1.5">
+      <button onclick="showPage('page-home')" id="desk-nav-home" class="desk-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all bg-primary/10 text-primary border border-primary/20">
+        <span class="material-symbols-outlined">home</span>
+        <span>Dashboard</span>
+      </button>
+
+      <button onclick="showPage('page-competidores')" id="desk-nav-competidores" class="desk-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-text-sub hover:bg-surface-high hover:text-white transition-all">
+        <span class="material-symbols-outlined">groups</span>
+        <span>Competidores</span>
+      </button>
+
+      <button onclick="showPage('page-meus-torneios')" id="desk-nav-torneios" class="desk-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-text-sub hover:bg-surface-high hover:text-white transition-all">
+        <span class="material-symbols-outlined">emoji_events</span>
+        <span>Meus Torneios</span>
+      </button>
+
+      <button onclick="showPage('page-lives')" id="desk-nav-lives" class="desk-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-danger hover:bg-danger/10 border border-danger/20 transition-all">
+        <span class="material-symbols-outlined">videocam</span>
+        <span>Lives & Gravações</span>
+      </button>
+
+      <button onclick="showPage('page-estatisticas-gerais')" id="desk-nav-stats" class="desk-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-text-sub hover:bg-surface-high hover:text-white transition-all">
+        <span class="material-symbols-outlined">leaderboard</span>
+        <span>Estatísticas Gerais</span>
+      </button>
+
+      <button onclick="showPage('page-backup')" id="desk-nav-backup" class="desk-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-text-sub hover:bg-surface-high hover:text-white transition-all">
+        <span class="material-symbols-outlined">save_alt</span>
+        <span>Backup (Excel / CSV)</span>
+      </button>
+    </nav>
+
+    <!-- Footer Stats Badge -->
+    <div class="mt-auto p-4 rounded-xl bg-surface-high/60 border border-border-dark/60 text-xs text-text-sub flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+        <span>Sistema Ativo</span>
+      </div>
+      <span class="font-mono text-[10px] bg-background px-2 py-0.5 rounded border border-border-dark">v2.7 Pro</span>
+    </div>
+  </aside>
+
+  <!-- 🚀 MAIN CONTENT CONTAINER -->
+  <main class="flex-1 md:ml-64 pt-20 md:pt-8 pb-24 md:pb-8 px-4 md:px-8 max-w-7xl mx-auto w-full">
+
+    <!-- 🏠 1. TELA HOME / DASHBOARD -->
+    <div id="page-home" class="page active space-y-8">
+      <!-- Hero Banner -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-surface-card via-surface-high to-surface-card p-6 md:p-8 border border-border-dark shadow-xl">
+        <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-2xl space-y-3">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-danger/20 text-danger border border-danger/40 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-danger animate-ping"></span>
+            <span>Live Streaming & Registro de Partidas</span>
+          </div>
+          <h2 class="text-2xl md:text-4xl font-extrabold text-white tracking-tight">
+            Gerencie Torneios, Rodadas & Transmissões Ao Vivo
+          </h2>
+          <p class="text-text-sub text-sm md:text-base leading-relaxed">
+            Cadastre competidores, monte campeonatos, conte gols e assistências em tempo real e adicione os links das lives/gravações das partidas de cada dia para rever e fazer cortes!
+          </p>
+          <div class="pt-2 flex flex-wrap gap-3">
+            <button onclick="showPage('page-criar-torneio')" class="bg-primary hover:bg-primary-hover text-black font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all active:scale-95 text-sm glow-primary">
+              <span class="material-symbols-outlined">add_circle</span>
+              <span>Criar Torneio</span>
+            </button>
+            <button onclick="showPage('page-lives')" class="bg-danger hover:bg-red-600 text-white font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all text-sm glow-danger">
+              <span class="material-symbols-outlined">videocam</span>
+              <span>Ver Lives das Partidas</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bento Grid Metric Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Metric 1 -->
+        <div class="glass-card p-6 rounded-2xl flex items-center justify-between relative overflow-hidden group hover:border-primary/40 transition-all">
+          <div class="space-y-1">
+            <span class="text-xs font-semibold uppercase tracking-wider text-text-sub">Competidores Globais</span>
+            <h3 id="home-metric-players" class="text-3xl font-black text-white">0</h3>
+            <p class="text-xs text-primary flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">groups</span> Jogadores Ativos
+            </p>
+          </div>
+          <div class="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+            <span class="material-symbols-outlined text-3xl">sports_score</span>
+          </div>
+        </div>
+
+        <!-- Metric 2 -->
+        <div class="glass-card p-6 rounded-2xl flex items-center justify-between relative overflow-hidden group hover:border-secondary/40 transition-all">
+          <div class="space-y-1">
+            <span class="text-xs font-semibold uppercase tracking-wider text-text-sub">Torneios Cadastrados</span>
+            <h3 id="home-metric-tournaments" class="text-3xl font-black text-white">0</h3>
+            <p class="text-xs text-secondary flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">emoji_events</span> Campeonatos
+            </p>
+          </div>
+          <div class="w-14 h-14 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform">
+            <span class="material-symbols-outlined text-3xl">trophy</span>
+          </div>
+        </div>
+
+        <!-- Metric 3 -->
+        <div class="glass-card p-6 rounded-2xl flex items-center justify-between relative overflow-hidden group hover:border-gold/40 transition-all sm:col-span-2 lg:col-span-1">
+          <div class="space-y-1">
+            <span class="text-xs font-semibold uppercase tracking-wider text-text-sub">Total de Gols Registrados</span>
+            <h3 id="home-metric-goals" class="text-3xl font-black text-gold">0</h3>
+            <p class="text-xs text-gold flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">sports_soccer</span> Gols Acumulados
+            </p>
+          </div>
+          <div class="w-14 h-14 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
+            <span class="material-symbols-outlined text-3xl">sports_soccer</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Menu Grid -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">apps</span>
+          <span>Acesso Rápido</span>
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div onclick="showPage('page-competidores')" class="glass-card p-5 rounded-xl cursor-pointer hover:bg-surface-high/80 hover:border-primary/50 transition-all group flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined">person_add</span>
+              </div>
+              <span class="material-symbols-outlined text-text-sub group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-base">Competidores</h4>
+              <p class="text-xs text-text-sub mt-1">Cadastrar, renomear e excluir jogadores globais.</p>
+            </div>
+          </div>
+
+          <div onclick="showPage('page-criar-torneio')" class="glass-card p-5 rounded-xl cursor-pointer hover:bg-surface-high/80 hover:border-primary/50 transition-all group flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined">add_circle</span>
+              </div>
+              <span class="material-symbols-outlined text-text-sub group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-base">Criar Torneio</h4>
+              <p class="text-xs text-text-sub mt-1">Monte um novo campeonato com participantes.</p>
+            </div>
+          </div>
+
+          <div onclick="showPage('page-meus-torneios')" class="glass-card p-5 rounded-xl cursor-pointer hover:bg-surface-high/80 hover:border-primary/50 transition-all group flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center">
+                <span class="material-symbols-outlined">emoji_events</span>
+              </div>
+              <span class="material-symbols-outlined text-text-sub group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-base">Meus Torneios</h4>
+              <p class="text-xs text-text-sub mt-1">Gerencie rodadas, partidas e encerre campeonatos.</p>
+            </div>
+          </div>
+
+          <div onclick="showPage('page-lives')" class="glass-card p-5 rounded-xl cursor-pointer hover:bg-surface-high/80 hover:border-danger/50 transition-all group flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 rounded-lg bg-danger/10 text-danger flex items-center justify-center">
+                <span class="material-symbols-outlined">videocam</span>
+              </div>
+              <span class="material-symbols-outlined text-text-sub group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-base">Lives & Gravações</h4>
+              <p class="text-xs text-text-sub mt-1">Assista às transmissões e vídeos das partidas de cada dia.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 👤 2. TELA COMPETIDORES -->
+    <div id="page-competidores" class="page space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">groups</span>
+            <span>Gestão de Competidores Globais</span>
+          </h2>
+          <p class="text-xs text-text-sub mt-1">Os jogadores cadastrados aqui estarão disponíveis para inclusão em qualquer torneio.</p>
+        </div>
+        <button onclick="showPage('page-home')" class="self-start sm:self-auto bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">arrow_back</span> Voltar
+        </button>
+      </div>
+
+      <!-- Form Adicionar Competidor -->
+      <div class="glass-card p-5 rounded-2xl border border-border-dark">
+        <h3 class="text-sm font-bold text-primary uppercase tracking-wider mb-3">Cadastrar Novo Competidor</h3>
+        <div class="flex gap-3">
+          <input type="text" id="globalPlayerInput" placeholder="Ex: Gabriel Jesus" onkeypress="if(event.key === 'Enter') addGlobalPlayer()" class="flex-1 bg-background border border-border-dark focus:border-primary text-white rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors" />
+          <button onclick="addGlobalPlayer()" class="bg-primary hover:bg-primary-hover text-black font-bold px-6 py-3 rounded-xl text-sm transition-all active:scale-95 flex items-center gap-2 glow-primary">
+            <span class="material-symbols-outlined font-bold">add</span>
+            <span>Adicionar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de Competidores -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-bold text-text-sub uppercase tracking-wider">Jogadores Cadastrados</h3>
+        <div id="globalPlayersList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+    </div>
+
+    <!-- ➕ 3. TELA CRIAR TORNEIO -->
+    <div id="page-criar-torneio" class="page space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">add_circle</span>
+            <span>Criar Novo Torneio / Temporada</span>
+          </h2>
+          <p class="text-xs text-text-sub mt-1">Informe o nome do campeonato e selecione os participantes iniciais.</p>
+        </div>
+        <button onclick="showPage('page-home')" class="self-start sm:self-auto bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">arrow_back</span> Voltar
+        </button>
+      </div>
+
+      <!-- Input Nome -->
+      <div class="glass-card p-5 rounded-2xl border border-border-dark space-y-3">
+        <label class="text-sm font-bold text-primary uppercase tracking-wider block">Nome do Torneio</label>
+        <input type="text" id="tournamentNameInput" placeholder="Ex: Liga Ouro Verão 2026" class="w-full bg-background border border-border-dark focus:border-primary text-white rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors" />
+      </div>
+
+      <!-- Seleção de Jogadores -->
+      <div class="glass-card p-5 rounded-2xl border border-border-dark space-y-4">
+        <div class="flex items-center justify-between border-b border-border-dark pb-3">
+          <label class="text-sm font-bold text-white uppercase tracking-wider">Selecione os Participantes</label>
+          <span class="text-xs text-primary font-semibold">Marque os competidores</span>
+        </div>
+        <div id="tournamentCheckboxes" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-80 overflow-y-auto pr-1"></div>
+      </div>
+
+      <button onclick="createTournament()" class="w-full bg-primary hover:bg-primary-hover text-black font-bold py-4 rounded-xl text-base transition-all active:scale-98 glow-primary flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined font-bold">check_circle</span>
+        <span>Criar e Iniciar Torneio</span>
+      </button>
+    </div>
+
+    <!-- 🏆 4. TELA MEUS TORNEIOS -->
+    <div id="page-meus-torneios" class="page space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">emoji_events</span>
+            <span>Meus Torneios</span>
+          </h2>
+          <p class="text-xs text-text-sub mt-1">Gerencie campeonatos em andamento e encerrados.</p>
+        </div>
+        <button onclick="showPage('page-criar-torneio')" class="self-start sm:self-auto bg-primary hover:bg-primary-hover text-black px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all glow-primary">
+          <span class="material-symbols-outlined text-sm font-bold">add</span> Novo Torneio
+        </button>
+      </div>
+
+      <div id="tournamentsList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- 📊 5. TELA DETALHES DO TORNEIO -->
+    <div id="page-torneio-detalhes" class="page space-y-6">
+      <!-- Header do Torneio -->
+      <div class="glass-card p-6 rounded-2xl border border-border-dark space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+          <div class="space-y-1">
+            <span class="text-xs font-semibold text-primary uppercase tracking-wider">Painel do Torneio</span>
+            <h2 id="tournamentTitle" class="text-2xl font-black text-white"></h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="showPage('page-meus-torneios')" class="bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+              <span class="material-symbols-outlined text-sm">arrow_back</span> Voltar
+            </button>
+            <button id="finishTournamentBtn" onclick="finishTournament()" class="bg-danger/20 hover:bg-danger/30 text-danger border border-danger/40 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all">
+              <span class="material-symbols-outlined text-sm">lock</span> Finalizar Torneio
+            </button>
+          </div>
+        </div>
+
+        <!-- Finished Notice -->
+        <div id="finishedNotice" class="hidden p-4 rounded-xl bg-danger/10 border border-danger/30 text-danger text-xs font-bold flex items-center gap-3">
+          <span class="material-symbols-outlined text-xl">lock</span>
+          <span>ESTE TORNEIO FOI FINALIZADO! O registro de partidas e alteração de participantes foram bloqueados.</span>
+        </div>
+
+        <!-- Add Activity Form with Live Link Input -->
+        <div id="createActivitySection" class="p-4 rounded-xl bg-surface-high/50 border border-border-dark space-y-3">
+          <span class="text-xs font-bold text-primary uppercase tracking-wider block flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">add_circle</span> Criar Nova Atividade / Rodada (Evento)
+          </span>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input type="text" id="activityNameInput" placeholder="Ex: Rodada #1 - Quinta-Feira" class="bg-background border border-border-dark focus:border-primary text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none" />
+            <input type="text" id="activityLiveInput" placeholder="Link da Live / Transmissão (Opcional - YouTube, Twitch, etc.)" class="bg-background border border-border-dark focus:border-danger text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none" />
+          </div>
+          <button id="createActivityBtn" onclick="createActivity()" class="w-full bg-primary hover:bg-primary-hover text-black font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 glow-primary">
+            <span class="material-symbols-outlined font-bold">add</span> Criar Atividade com Transmissão
+          </button>
+        </div>
+
+        <!-- Add Player to Active Tournament -->
+        <div id="addNewPlayerToTournamentCard" class="pt-2 border-t border-border-dark/60 flex flex-col sm:flex-row items-center gap-3">
+          <select id="newPlayerSelect" class="flex-1 bg-background border border-border-dark text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none w-full"></select>
+          <button onclick="addPlayerToActiveTournament()" class="w-full sm:w-auto bg-surface-variant hover:bg-border-dark text-white font-semibold px-4 py-2.5 rounded-xl text-xs border border-border-dark whitespace-nowrap">
+            + Incluir no Torneio
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid: Stats Preview & Activities -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Stats Leaderboard Preview (5 cols) -->
+        <div class="lg:col-span-5 space-y-3">
+          <h3 class="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+            <span class="material-symbols-outlined">analytics</span>
+            <span>Desempenho da Temporada</span>
+          </h3>
+          <div class="glass-card p-4 rounded-2xl border border-border-dark">
+            <div id="tournamentStatsPreview" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- Activities / Rodadas List (7 cols) -->
+        <div class="lg:col-span-7 space-y-3">
+          <h3 class="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+            <span class="material-symbols-outlined">calendar_today</span>
+            <span>Atividades & Rodadas Cadastradas</span>
+          </h3>
+          <div id="activitiesList" class="space-y-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📅 6. TELA DETALHES DA ATIVIDADE -->
+    <div id="page-atividade-detalhes" class="page space-y-6">
+      <!-- Header Atividade -->
+      <div class="glass-card p-6 rounded-2xl border border-border-dark space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+          <div>
+            <span class="text-xs font-semibold text-primary uppercase tracking-wider">Gestão da Rodada</span>
+            <h2 id="activityTitle" class="text-2xl font-black text-white"></h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="showPage('page-torneio-detalhes')" class="bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+              <span class="material-symbols-outlined text-sm">arrow_back</span> Voltar ao Torneio
+            </button>
+            <button id="finishActivityBtn" onclick="finishActivity()" class="bg-danger/20 hover:bg-danger/30 text-danger border border-danger/40 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all">
+              <span class="material-symbols-outlined text-sm">check_circle</span> Finalizar Atividade
+            </button>
+          </div>
+        </div>
+
+        <!-- Activity Status Notice -->
+        <div id="activityStatusNotice" class="hidden p-4 rounded-xl bg-danger/10 border border-danger/30 text-danger text-xs font-bold flex items-center gap-3">
+          <span class="material-symbols-outlined text-xl">lock</span>
+          <span>ESTA ATIVIDADE FOI FINALIZADA! Alterações de participantes, MVP e partidas foram travadas.</span>
+        </div>
+
+        <!-- 🔴 LIVE & GRAVAÇÃO SECTION -->
+        <div id="liveStreamSection" class="p-4 rounded-xl bg-gradient-to-r from-danger/20 via-surface-card to-surface-card border border-danger/40 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-danger animate-ping"></span>
+              <span class="font-extrabold text-white text-sm uppercase tracking-wider flex items-center gap-1">
+                <span class="material-symbols-outlined text-danger">videocam</span> Transmissão Ao Vivo / Gravação da Rodada
+              </span>
+            </div>
+            <span id="liveBadgeStatus" class="hidden text-[10px] font-bold px-2 py-0.5 rounded bg-danger text-white uppercase">VÍDEO ANEXADO</span>
+          </div>
+
+          <!-- Video player or button container -->
+          <div id="livePlayerContainer"></div>
+
+          <!-- Form Add/Edit Live Link -->
+          <div id="liveUrlForm" class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-border-dark/60">
+            <input type="text" id="liveUrlInput" placeholder="Cole aqui o link do YouTube, Twitch, Drive ou Gravação..." class="flex-1 bg-background border border-border-dark focus:border-danger text-white rounded-xl px-4 py-2 text-xs focus:outline-none" />
+            <button onclick="saveActivityLiveUrl()" class="bg-danger hover:bg-red-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1 glow-danger">
+              <span class="material-symbols-outlined text-sm">save</span> Salvar Link da Live
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Action: New Match -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-primary/10 border border-primary/30 p-4 rounded-xl">
+          <div class="space-y-1">
+            <h4 class="font-bold text-white text-sm">Compilador de Partidas ao Vivo</h4>
+            <p class="text-xs text-text-sub">Abra o placar para contar gols e assistências em tempo real.</p>
+          </div>
+          <button id="newMatchBtn" onclick="openNewMatchModal()" class="w-full sm:w-auto bg-primary hover:bg-primary-hover text-black font-extrabold px-6 py-3 rounded-xl text-sm transition-all glow-primary flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined font-extrabold">sports_soccer</span>
+            <span>Registrar Partida</span>
+          </button>
+        </div>
+
+        <!-- MVP Selection -->
+        <div class="pt-2 border-t border-border-dark/60 space-y-2">
+          <label class="text-xs font-bold text-gold uppercase tracking-wider flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">star</span> Escolha do MVP da Atividade
+          </label>
+          <select id="activityMvpSelect" onchange="setActivityMvp(this.value)" class="w-full bg-background border border-border-dark text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold"></select>
+        </div>
+      </div>
+
+      <!-- Presença e Resumo -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Lista de Presença Checkboxes (5 cols) -->
+        <div class="lg:col-span-5 space-y-3">
+          <h3 class="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+            <span class="material-symbols-outlined">checklist</span>
+            <span>Lista de Presença</span>
+          </h3>
+          <div class="glass-card p-4 rounded-2xl border border-border-dark">
+            <div id="activityParticipantsCheckboxes" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+        <!-- Estatísticas da Atividade (7 cols) -->
+        <div class="lg:col-span-7 space-y-3">
+          <h3 class="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+            <span class="material-symbols-outlined">bar_chart</span>
+            <span>Desempenho nesta Atividade</span>
+          </h3>
+          <div class="glass-card p-4 rounded-2xl border border-border-dark">
+            <div id="activityStatsView" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Partidas Registradas -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+          <span class="material-symbols-outlined">history</span>
+          <span>Histórico de Partidas da Atividade</span>
+        </h3>
+        <div id="matchesList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+    </div>
+
+    <!-- 🎥 7. TELA GALERIA DE LIVES & VÍDEOS -->
+    <div id="page-lives" class="page space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-danger">videocam</span>
+            <span>Lives & Transmissões das Rodadas</span>
+          </h2>
+          <p class="text-xs text-text-sub mt-1">Galeria com todos os vídeos e transmissões das partidas jogadas nos torneios.</p>
+        </div>
+        <button onclick="showPage('page-home')" class="self-start sm:self-auto bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">arrow_back</span> Voltar
+        </button>
+      </div>
+
+      <div id="livesGalleryView" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- ⚽ 8. TELA REGISTRAR PARTIDA (COMPILADOR LIVE) -->
+    <div id="page-registrar-partida" class="page space-y-6">
+      <div class="flex items-center justify-between border-b border-border-dark pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">sports_soccer</span>
+            <span>Registrar Partida em Tempo Real</span>
+          </h2>
+          <p class="text-xs text-text-sub mt-1">Ajuste os contadores de gols e assistências para os jogadores presentes.</p>
+        </div>
+        <button onclick="showPage('page-atividade-detalhes')" class="bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">close</span> Cancelar
+        </button>
+      </div>
+
+      <!-- Lista de Contadores por Jogador -->
+      <div id="matchPlayersList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+      <!-- Botão Salvar Partida -->
+      <button onclick="saveCurrentMatch()" class="w-full bg-primary hover:bg-primary-hover text-black font-black py-4 rounded-2xl text-lg transition-all active:scale-98 glow-primary flex items-center justify-center gap-2 shadow-2xl">
+        <span class="material-symbols-outlined font-black text-2xl">save</span>
+        <span>Salvar Partida na Atividade</span>
+      </button>
+    </div>
+
+    <!-- 📈 9. TELA ESTATÍSTICAS GERAIS -->
+    <div id="page-estatisticas-gerais" class="page space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">leaderboard</span>
+            <span>Estatísticas Gerais & Leaderboard</span>
+          </h2>
+          <p class="text-xs text-text-sub mt-1">Rankings consolidados de todos os tempos e por temporada.</p>
+        </div>
+        <button onclick="showPage('page-home')" class="self-start sm:self-auto bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">arrow_back</span> Voltar
+        </button>
+      </div>
+
+      <!-- Selector de Abas -->
+      <div class="flex bg-surface-card p-1.5 rounded-2xl border border-border-dark max-w-md">
+        <button id="btn-tab-history" onclick="switchStatsTab('history')" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all bg-primary text-black shadow-md flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-sm">history</span> Histórico Geral
+        </button>
+        <button id="btn-tab-bytourney" onclick="switchStatsTab('bytourney')" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all text-text-sub hover:text-white flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-sm">emoji_events</span> Por Torneio
+        </button>
+      </div>
+
+      <!-- ABA 1: HISTÓRICO GERAL -->
+      <div id="tab-stats-history" class="space-y-4">
+        <div class="glass-card p-6 rounded-2xl border border-border-dark space-y-4">
+          <div>
+            <h3 class="text-lg font-extrabold text-white">🏆 Ranking Acumulado de Todos os Tempos</h3>
+            <p class="text-xs text-text-sub mt-0.5">Soma total de partidas, gols, assistências e MVPs acumulados em todos os torneios.</p>
+          </div>
+          <div id="historyStatsView" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- ABA 2: DIVIDIDO POR TORNEIO -->
+      <div id="tab-stats-bytourney" class="hidden space-y-4">
+        <div class="glass-card p-6 rounded-2xl border border-border-dark space-y-4">
+          <div>
+            <h3 class="text-lg font-extrabold text-white">🏆 Desempenho por Torneio</h3>
+            <p class="text-xs text-text-sub mt-0.5">Métricas detalhadas e destaques de cada temporada finalizada.</p>
+          </div>
+          <div id="byTournamentStatsView" class="space-y-6"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 💾 10. TELA BACKUP -->
+    <div id="page-backup" class="page space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
+        <div>
+          <h2 class="text-2xl font-black text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">save_alt</span>
+            <span>Backup e Exportação (Excel / CSV)</span>
+          </h2>
+          <p class="text-xs text-text-sub mt-1">Exporte dados de torneios para planilhas ou restaure backups em CSV.</p>
+        </div>
+        <button onclick="showPage('page-home')" class="self-start sm:self-auto bg-surface-variant hover:bg-border-dark text-white px-4 py-2 rounded-xl text-xs font-semibold border border-border-dark flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">arrow_back</span> Voltar
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Export Card -->
+        <div class="glass-card p-6 rounded-2xl border border-border-dark space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined text-xl">file_download</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-white text-base">Exportar Torneio para Excel</h3>
+              <p class="text-xs text-text-sub">Baixar relatório acumulado em formato CSV.</p>
+            </div>
+          </div>
+
+          <select id="exportTournamentSelect" class="w-full bg-background border border-border-dark text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary"></select>
+
+          <button onclick="exportTournamentCSV()" class="w-full bg-primary hover:bg-primary-hover text-black font-bold py-3.5 rounded-xl text-sm transition-all glow-primary flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined font-bold">download</span>
+            <span>Baixar Backup Excel (CSV)</span>
+          </button>
+        </div>
+
+        <!-- Import Card -->
+        <div class="glass-card p-6 rounded-2xl border border-border-dark space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
+              <span class="material-symbols-outlined text-xl">file_upload</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-white text-base">Importar Torneio (Excel / CSV)</h3>
+              <p class="text-xs text-text-sub">Selecione um arquivo .csv para restaurar.</p>
+            </div>
+          </div>
+
+          <input type="file" id="importFileInput" accept=".csv, .txt" class="w-full text-xs text-text-sub file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-surface-variant file:text-white hover:file:bg-border-dark cursor-pointer" />
+
+          <button onclick="importTournamentCSV()" class="w-full bg-surface-variant hover:bg-border-dark text-white font-bold py-3.5 rounded-xl text-sm transition-all border border-border-dark flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined">upload</span>
+            <span>Importar Torneio</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ⚙️ JAVASCRIPT LOGIC (FootStat Pro Engine) -->
+  <script>
+    let globalPlayers = JSON.parse(localStorage.getItem('football_global_players')) || [];
+    let tournaments = JSON.parse(localStorage.getItem('football_tournaments')) || [];
+
+    let activeTournamentId = null;
+    let activeActivityId = null;
+    let tempMatchStats = {};
+
+    function saveData() {
+      localStorage.setItem('football_global_players', JSON.stringify(globalPlayers));
+      localStorage.setItem('football_tournaments', JSON.stringify(tournaments));
+      updateHomeMetrics();
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const target = document.getElementById(pageId);
+      if (target) target.classList.add('active');
+
+      const shortName = pageId.replace('page-', '');
+      document.querySelectorAll('.desk-nav-btn, .mobile-nav-btn').forEach(btn => {
+        btn.classList.remove('bg-primary/10', 'text-primary', 'border', 'border-primary/20');
+        if (!btn.classList.contains('mobile-nav-btn')) {
+          btn.classList.add('text-text-sub');
+        } else {
+          btn.classList.remove('text-primary');
+          btn.classList.add('text-text-sub');
+        }
+      });
+
+      const activeDesk = document.getElementById('desk-nav-' + shortName);
+      const activeMobile = document.getElementById('mobile-nav-' + shortName);
+
+      if (activeDesk) {
+        activeDesk.classList.remove('text-text-sub');
+        activeDesk.classList.add('bg-primary/10', 'text-primary', 'border', 'border-primary/20');
+      }
+      if (activeMobile) {
+        activeMobile.classList.remove('text-text-sub');
+        activeMobile.classList.add('text-primary');
+      }
+
+      if (pageId === 'page-home') updateHomeMetrics();
+      if (pageId === 'page-competidores') renderGlobalPlayers();
+      if (pageId === 'page-criar-torneio') prepareTournamentCreation();
+      if (pageId === 'page-meus-torneios') renderTournamentsList();
+      if (pageId === 'page-torneio-detalhes') renderTournamentDetails();
+      if (pageId === 'page-atividade-detalhes') renderActivityDetails();
+      if (pageId === 'page-lives') renderLivesGallery();
+      if (pageId === 'page-estatisticas-gerais') renderGeneralStats();
+      if (pageId === 'page-backup') prepareBackupPage();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateHomeMetrics() {
+      document.getElementById('home-metric-players').innerText = globalPlayers.length;
+      document.getElementById('home-metric-tournaments').innerText = tournaments.length;
+
+      let totalGoals = 0;
+      tournaments.forEach(t => {
+        if (t.activities) {
+          t.activities.forEach(act => {
+            if (act.matches) {
+              act.matches.forEach(m => {
+                if (m.stats) {
+                  Object.values(m.stats).forEach(s => {
+                    totalGoals += (s.goals || 0);
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+      document.getElementById('home-metric-goals').innerText = totalGoals;
+    }
+
+    // --- GERENCIAMENTO DE COMPETIDORES ---
+    function addGlobalPlayer() {
+      const input = document.getElementById('globalPlayerInput');
+      const name = input.value.trim();
+      if (!name) return alert('Digite o nome do jogador!');
+      if (globalPlayers.includes(name)) return alert('Já existe um jogador cadastrado com este nome!');
+
+      globalPlayers.push(name);
+      saveData();
+      input.value = '';
+      renderGlobalPlayers();
+    }
+
+    function renderGlobalPlayers() {
+      const container = document.getElementById('globalPlayersList');
+      if (globalPlayers.length === 0) {
+        container.innerHTML = '<p class="text-text-sub text-sm col-span-2">Nenhum competidor cadastrado ainda.</p>';
+        return;
+      }
+
+      container.innerHTML = globalPlayers.map((name, index) => `
+        <div class="glass-card p-4 rounded-xl flex items-center justify-between border border-border-dark hover:border-primary/40 transition-all">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-bold text-sm">
+              ${name.charAt(0).toUpperCase()}
+            </div>
+            <span class="font-bold text-white text-sm">${name}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="renameGlobalPlayer(${index})" class="p-2 rounded-lg bg-surface-variant hover:bg-border-dark text-text-sub hover:text-white transition-colors" title="Renomear">
+              <span class="material-symbols-outlined text-sm">edit</span>
+            </button>
+            <button onclick="removeGlobalPlayer(${index})" class="p-2 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger transition-colors" title="Excluir">
+              <span class="material-symbols-outlined text-sm">delete</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renameGlobalPlayer(index) {
+      const oldName = globalPlayers[index];
+      const newName = prompt('Novo nome para o competidor:', oldName);
+      if (!newName || newName.trim() === '') return;
+
+      const trimmedNewName = newName.trim();
+      if (globalPlayers.includes(trimmedNewName) && trimmedNewName !== oldName) {
+        return alert('Já existe um competidor com esse nome!');
+      }
+
+      globalPlayers[index] = trimmedNewName;
+
+      tournaments.forEach(t => {
+        t.playerNames = t.playerNames.map(p => p === oldName ? trimmedNewName : p);
+        if (t.activities) {
+          t.activities.forEach(act => {
+            if (act.mvp === oldName) act.mvp = trimmedNewName;
+            if (act.participants) {
+              act.participants = act.participants.map(p => p === oldName ? trimmedNewName : p);
+            }
+            if (act.matches) {
+              act.matches.forEach(m => {
+                if (m.stats && m.stats[oldName]) {
+                  m.stats[trimmedNewName] = m.stats[oldName];
+                  delete m.stats[oldName];
+                }
+              });
+            }
+          });
+        }
+      });
+
+      saveData();
+      renderGlobalPlayers();
+    }
+
+    function removeGlobalPlayer(index) {
+      if (confirm(`Excluir competidor "${globalPlayers[index]}"?`)) {
+        globalPlayers.splice(index, 1);
+        saveData();
+        renderGlobalPlayers();
+      }
+    }
+
+    // --- CRIAR TORNEIO ---
+    function prepareTournamentCreation() {
+      const container = document.getElementById('tournamentCheckboxes');
+      if (globalPlayers.length === 0) {
+        container.innerHTML = '<p class="text-text-sub text-sm col-span-3">Cadastre competidores na tela de Competidores primeiro.</p>';
+        return;
+      }
+
+      container.innerHTML = globalPlayers.map(name => `
+        <label class="flex items-center gap-3 p-3 rounded-xl bg-surface-high/60 border border-border-dark/60 cursor-pointer hover:border-primary/40 transition-colors">
+          <input type="checkbox" value="${name}" class="w-4 h-4 rounded border-border-dark text-primary focus:ring-primary bg-background" />
+          <span class="text-sm font-semibold text-white">${name}</span>
+        </label>
+      `).join('');
+    }
+
+    function createTournament() {
+      const nameInput = document.getElementById('tournamentNameInput');
+      const name = nameInput.value.trim();
+      const selected = Array.from(document.querySelectorAll('#tournamentCheckboxes input:checked')).map(cb => cb.value);
+
+      if (!name) return alert('Digite o nome do torneio!');
+      if (selected.length === 0) return alert('Selecione ao menos 1 competidor!');
+
+      const newTournament = {
+        id: Date.now(),
+        name: name,
+        status: 'active',
+        playerNames: selected,
+        activities: []
+      };
+
+      tournaments.push(newTournament);
+      saveData();
+      nameInput.value = '';
+      alert('Torneio criado com sucesso!');
+      showPage('page-meus-torneios');
+    }
+
+    // --- MEUS TORNEIOS ---
+    function renderTournamentsList() {
+      const container = document.getElementById('tournamentsList');
+      if (tournaments.length === 0) {
+        container.innerHTML = '<p class="text-text-sub text-sm col-span-2">Nenhum torneio criado ainda.</p>';
+        return;
+      }
+
+      container.innerHTML = tournaments.map(t => `
+        <div class="glass-card p-5 rounded-2xl border border-border-dark hover:border-primary/40 transition-all flex flex-col justify-between space-y-4">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <h4 class="font-extrabold text-white text-lg">${t.name}</h4>
+                ${t.status === 'finished' 
+                  ? '<span class="px-2.5 py-0.5 rounded-full bg-danger/10 border border-danger/30 text-danger text-[10px] font-bold uppercase">FINALIZADO</span>' 
+                  : '<span class="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-[10px] font-bold uppercase">EM ANDAMENTO</span>'}
+              </div>
+              <p class="text-xs text-text-sub">${t.playerNames.length} Jogadores | ${t.activities ? t.activities.length : 0} Atividades</p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-border-dark/60 pt-3">
+            <div class="flex items-center gap-2">
+              <button onclick="renameTournament(${t.id})" class="px-3 py-1.5 rounded-lg bg-surface-variant hover:bg-border-dark text-xs text-text-sub hover:text-white font-semibold transition-colors flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">edit</span> Renomear
+              </button>
+              <button onclick="deleteTournament(${t.id})" class="px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 text-xs text-danger font-semibold transition-colors flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">delete</span> Excluir
+              </button>
+            </div>
+            <button onclick="openTournament(${t.id})" class="bg-primary hover:bg-primary-hover text-black font-bold px-4 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 glow-primary">
+              <span>Abrir</span>
+              <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renameTournament(id) {
+      const t = tournaments.find(item => item.id === id);
+      if (!t) return;
+      const newName = prompt('Novo nome para o torneio:', t.name);
+      if (newName && newName.trim() !== '') {
+        t.name = newName.trim();
+        saveData();
+        renderTournamentsList();
+      }
+    }
+
+    function deleteTournament(id) {
+      const t = tournaments.find(item => item.id === id);
+      if (t && confirm(`Excluir o torneio "${t.name}"?`)) {
+        tournaments = tournaments.filter(item => item.id !== id);
+        saveData();
+        renderTournamentsList();
+      }
+    }
+
+    function openTournament(id) {
+      activeTournamentId = id;
+      showPage('page-torneio-detalhes');
+    }
+
+    // --- DETALHES DO TORNEIO ---
+    function renderTournamentDetails() {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      if (!t) return;
+
+      document.getElementById('tournamentTitle').innerText = `${t.name} ${t.status === 'finished' ? '(Finalizado)' : ''}`;
+
+      const isFinished = t.status === 'finished';
+      document.getElementById('activityNameInput').disabled = isFinished;
+      if (document.getElementById('activityLiveInput')) document.getElementById('activityLiveInput').disabled = isFinished;
+      document.getElementById('createActivityBtn').disabled = isFinished;
+      document.getElementById('finishedNotice').style.display = isFinished ? 'flex' : 'none';
+      document.getElementById('finishTournamentBtn').style.display = isFinished ? 'none' : 'flex';
+      document.getElementById('addNewPlayerToTournamentCard').style.display = isFinished ? 'none' : 'flex';
+
+      const availablePlayers = globalPlayers.filter(gp => !t.playerNames.includes(gp));
+      const newPlayerSelect = document.getElementById('newPlayerSelect');
+      newPlayerSelect.innerHTML = availablePlayers.length === 0
+        ? '<option value="">Nenhum jogador disponível para adicionar</option>'
+        : `<option value="">Selecione um jogador cadastrado...</option>` + availablePlayers.map(p => `<option value="${p}">${p}</option>`).join('');
+      newPlayerSelect.disabled = availablePlayers.length === 0 || isFinished;
+
+      const totals = {};
+      t.playerNames.forEach(p => { totals[p] = { matches: 0, goals: 0, assists: 0, mvps: 0 }; });
+
+      if (t.activities) {
+        t.activities.forEach(act => {
+          if (act.mvp && totals[act.mvp]) totals[act.mvp].mvps += 1;
+          if (act.participants) {
+            act.participants.forEach(pName => {
+              if (totals[pName]) totals[pName].matches += 1;
+            });
+          }
+          if (act.matches) {
+            act.matches.forEach(m => {
+              Object.keys(m.stats).forEach(pName => {
+                if (totals[pName]) {
+                  totals[pName].goals += m.stats[pName].goals || 0;
+                  totals[pName].assists += m.stats[pName].assists || 0;
+                }
+              });
+            });
+          }
+        });
+      }
+
+      let maxGoals = -1, topGoalsPlayer = null;
+      let maxAssists = -1, topAssistsPlayer = null;
+      let maxMatches = -1, topMatchesPlayer = null;
+      let maxMvps = -1, topMvpPlayer = null;
+
+      if (isFinished) {
+        t.playerNames.forEach(pName => {
+          const p = totals[pName];
+          if (p.goals > maxGoals && p.goals > 0) { maxGoals = p.goals; topGoalsPlayer = pName; }
+          if (p.assists > maxAssists && p.assists > 0) { maxAssists = p.assists; topAssistsPlayer = pName; }
+          if (p.matches > maxMatches && p.matches > 0) { maxMatches = p.matches; topMatchesPlayer = pName; }
+          if (p.mvps > maxMvps && p.mvps > 0) { maxMvps = p.mvps; topMvpPlayer = pName; }
+        });
+      }
+
+      const previewContainer = document.getElementById('tournamentStatsPreview');
+      previewContainer.innerHTML = t.playerNames.map(pName => {
+        const p = totals[pName] || { matches: 0, goals: 0, assists: 0, mvps: 0 };
+        let badgeHtml = "";
+
+        if (isFinished) {
+          if (pName === topGoalsPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-gold/20 text-gold border border-gold/40 text-[10px] font-bold">👑 ARTILHEIRO</span>';
+          else if (pName === topAssistsPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-danger/20 text-danger border border-danger/40 text-[10px] font-bold">👟 GARÇOM</span>';
+          else if (pName === topMatchesPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-secondary/20 text-secondary border border-secondary/40 text-[10px] font-bold">🎮 MARATONISTA</span>';
+          else if (pName === topMvpPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-tertiary/20 text-tertiary border border-tertiary/40 text-[10px] font-bold">⭐ MVP DA TEMPORADA</span>';
+        }
+
+        return `
+          <div class="p-2.5 rounded-xl bg-surface-high/50 border border-border-dark/60 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">${pName}</span>
+              ${badgeHtml}
+            </div>
+            <span class="text-text-sub font-mono">🎮 ${p.matches}J | ⚽ ${p.goals}G | 👟 ${p.assists}A | ⭐ ${p.mvps}</span>
+          </div>
+        `;
+      }).join('');
+
+      const activitiesContainer = document.getElementById('activitiesList');
+      activitiesContainer.innerHTML = (!t.activities || t.activities.length === 0)
+        ? '<p class="text-text-sub text-sm">Nenhuma atividade cadastrada neste torneio.</p>'
+        : t.activities.map(act => `
+          <div onclick="openActivity(${act.id})" class="glass-card p-4 rounded-xl border border-border-dark hover:border-primary/40 transition-all cursor-pointer flex items-center justify-between">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-white text-sm">📅 ${act.name}</span>
+                ${act.liveUrl ? '<span class="px-2 py-0.5 rounded bg-danger text-white text-[10px] font-extrabold flex items-center gap-1 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span> 🔴 LIVE ANEXADA</span>' : ''}
+                ${act.status === 'finished' ? '<span class="px-2 py-0.5 rounded bg-danger/10 text-danger text-[10px] font-bold border border-danger/30">FINALIZADA</span>' : ''}
+                ${act.mvp ? `<span class="px-2 py-0.5 rounded bg-gold/10 text-gold text-[10px] font-bold border border-gold/30">⭐ MVP: ${act.mvp}</span>` : ''}
+              </div>
+              <p class="text-xs text-text-sub">${act.participants ? act.participants.length : 0} Presentes | ${act.matches ? act.matches.length : 0} Partidas</p>
+            </div>
+            <span class="material-symbols-outlined text-primary">arrow_forward</span>
+          </div>
+        `).join('');
+    }
+
+    function addPlayerToActiveTournament() {
+      const select = document.getElementById('newPlayerSelect');
+      const playerName = select.value;
+      if (!playerName) return alert('Selecione um jogador válido!');
+
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      if (!t) return;
+
+      if (t.playerNames.includes(playerName)) return alert('Este jogador já faz parte deste torneio!');
+
+      t.playerNames.push(playerName);
+      saveData();
+      renderTournamentDetails();
+    }
+
+    function finishTournament() {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      if (!t) return;
+
+      if (confirm(`Tem certeza que deseja finalizar o torneio "${t.name}"? Não será mais possível adicionar partidas ou alterar participantes.`)) {
+        t.status = 'finished';
+        saveData();
+        renderTournamentDetails();
+      }
+    }
+
+    function createActivity() {
+      const nameInput = document.getElementById('activityNameInput');
+      const liveInput = document.getElementById('activityLiveInput');
+      const name = nameInput.value.trim();
+      const liveUrl = liveInput ? liveInput.value.trim() : '';
+
+      if (!name) return alert('Digite um nome para a atividade/rodada!');
+
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      if (t.status === 'finished') return alert('Este torneio já foi finalizado!');
+
+      if (!t.activities) t.activities = [];
+
+      t.activities.push({
+        id: Date.now(),
+        name: name,
+        status: 'active',
+        mvp: '',
+        liveUrl: liveUrl,
+        participants: [...t.playerNames],
+        matches: []
+      });
+
+      saveData();
+      nameInput.value = '';
+      if (liveInput) liveInput.value = '';
+      renderTournamentDetails();
+    }
+
+    function openActivity(actId) {
+      activeActivityId = actId;
+      showPage('page-atividade-detalhes');
+    }
+
+    // --- DETALHES DA ATIVIDADE E PARTIDAS ---
+    function renderActivityDetails() {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+      if (!act) return;
+
+      if (!act.participants) act.participants = [...t.playerNames];
+
+      const isTournamentFinished = t.status === 'finished';
+      const isActFinished = act.status === 'finished' || isTournamentFinished;
+
+      document.getElementById('activityTitle').innerText = `${t.name} ➔ ${act.name} ${act.status === 'finished' ? '(Finalizada)' : ''}`;
+      document.getElementById('activityMvpSelect').disabled = isActFinished;
+      document.getElementById('newMatchBtn').disabled = isActFinished;
+      document.getElementById('finishActivityBtn').style.display = isActFinished ? 'none' : 'flex';
+      document.getElementById('activityStatusNotice').style.display = isActFinished ? 'flex' : 'none';
+
+      // Live Stream & Video Section
+      const liveInput = document.getElementById('liveUrlInput');
+      const liveBadge = document.getElementById('liveBadgeStatus');
+      const livePlayerContainer = document.getElementById('livePlayerContainer');
+
+      liveInput.value = act.liveUrl || '';
+      liveInput.disabled = isActFinished;
+
+      if (act.liveUrl && act.liveUrl.trim() !== '') {
+        liveBadge.classList.remove('hidden');
+
+        let ytId = null;
+        const ytMatch = act.liveUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|live\/|watch\?.+&v=))([\w-]{11})/);
+        if (ytMatch && ytMatch[1]) {
+          ytId = ytMatch[1];
+        }
+
+        if (ytId) {
+          livePlayerContainer.innerHTML = `
+            <div class="relative overflow-hidden rounded-xl aspect-video border border-border-dark shadow-2xl bg-black">
+              <iframe class="w-full h-full" src="https://www.youtube-nocookie.com/embed/${ytId}?autoplay=0" title="Transmissão ao Vivo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+            <div class="mt-2 flex justify-between items-center text-xs">
+              <span class="text-primary font-bold">🔴 Player YouTube Transmissão Integrada</span>
+              <a href="${act.liveUrl}" target="_blank" class="inline-flex items-center gap-1 text-danger hover:underline font-bold">
+                <span class="material-symbols-outlined text-sm">open_in_new</span> Abrir em Nova Aba
+              </a>
+            </div>
+          `;
+        } else {
+          livePlayerContainer.innerHTML = `
+            <a href="${act.liveUrl}" target="_blank" class="w-full bg-danger hover:bg-red-600 text-white font-extrabold py-3.5 px-4 rounded-xl text-sm transition-all glow-danger flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined font-extrabold text-xl">play_circle</span>
+              <span>🔴 ASSISTIR TRANSMISSÃO AO VIVO / GRAVAÇÃO</span>
+              <span class="material-symbols-outlined text-sm">open_in_new</span>
+            </a>
+          `;
+        }
+      } else {
+        liveBadge.classList.add('hidden');
+        livePlayerContainer.innerHTML = `
+          <p class="text-xs text-text-sub">Nenhum link de live/vídeo anexado nesta atividade ainda. Cole o link do YouTube, Twitch, Drive ou Reels abaixo para permitir que os jogadores assistam!</p>
+        `;
+      }
+
+      const participantsContainer = document.getElementById('activityParticipantsCheckboxes');
+      participantsContainer.innerHTML = t.playerNames.map(pName => {
+        const isChecked = act.participants.includes(pName);
+        return `
+          <label class="flex items-center gap-3 p-2.5 rounded-xl bg-surface-high/50 border border-border-dark/60 cursor-pointer text-xs">
+            <input type="checkbox" value="${pName}" ${isChecked ? 'checked' : ''} ${isActFinished ? 'disabled' : ''} onchange="toggleParticipant('${pName}', this.checked)" class="w-4 h-4 rounded border-border-dark text-primary focus:ring-primary bg-background" />
+            <span class="font-semibold text-white">${pName}</span>
+          </label>
+        `;
+      }).join('');
+
+      const mvpSelect = document.getElementById('activityMvpSelect');
+      mvpSelect.innerHTML = `<option value="">Selecione o MVP da Atividade...</option>` +
+        t.playerNames.map(p => `<option value="${p}" ${act.mvp === p ? 'selected' : ''}>⭐ ${p}</option>`).join('');
+
+      const actTotals = {};
+      t.playerNames.forEach(p => { actTotals[p] = { matches: act.participants.includes(p) ? 1 : 0, goals: 0, assists: 0 }; });
+
+      if (act.matches) {
+        act.matches.forEach(m => {
+          Object.keys(m.stats).forEach(pName => {
+            if (actTotals[pName]) {
+              actTotals[pName].goals += m.stats[pName].goals || 0;
+              actTotals[pName].assists += m.stats[pName].assists || 0;
+            }
+          });
+        });
+      }
+
+      const view = document.getElementById('activityStatsView');
+      view.innerHTML = t.playerNames.map(pName => {
+        const p = actTotals[pName] || { matches: 0, goals: 0, assists: 0 };
+        const isMvp = act.mvp === pName;
+        return `
+          <div class="p-2.5 rounded-xl bg-surface-high/50 border border-border-dark/60 flex items-center justify-between text-xs ${p.matches === 0 ? 'opacity-40' : ''}">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">${pName}</span>
+              ${isMvp ? '<span class="px-2 py-0.5 rounded bg-gold/20 text-gold border border-gold/40 text-[10px] font-bold">⭐ MVP DA RODADA</span>' : ''}
+            </div>
+            <span class="text-text-sub font-mono">🎮 ${p.matches}J | ⚽ ${p.goals}G | 👟 ${p.assists}A</span>
+          </div>
+        `;
+      }).join('');
+
+      const matchesContainer = document.getElementById('matchesList');
+      matchesContainer.innerHTML = (!act.matches || act.matches.length === 0)
+        ? '<p class="text-text-sub text-sm col-span-2">Nenhuma partida registrada nesta atividade ainda.</p>'
+        : act.matches.map((m, idx) => `
+          <div class="glass-card p-4 rounded-xl border border-border-dark space-y-2">
+            <div class="flex items-center justify-between border-b border-border-dark/60 pb-2">
+              <span class="font-bold text-white text-xs">Partida #${idx + 1} (${m.time})</span>
+              ${!isActFinished ? `<button onclick="deleteMatch(${idx})" class="text-xs text-danger hover:underline">Excluir</button>` : ''}
+            </div>
+            <div class="text-xs text-text-sub space-y-1">
+              ${Object.keys(m.stats).map(p => {
+                const s = m.stats[p];
+                if (s.goals || s.assists) {
+                  return `<div>• <b class="text-white">${p}</b>: ${s.goals ? s.goals + 'G ' : ''}${s.assists ? s.assists + 'A' : ''}</div>`;
+                }
+                return '';
+              }).join('')}
+            </div>
+          </div>
+        `).join('');
+    }
+
+    function saveActivityLiveUrl() {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+      if (!act) return;
+
+      const input = document.getElementById('liveUrlInput');
+      act.liveUrl = input.value.trim();
+
+      saveData();
+      alert('Link da Live / Transmissão salvo com sucesso!');
+      renderActivityDetails();
+    }
+
+    // --- GALERIA DE LIVES & VÍDEOS DE TODOS OS TORNEIOS ---
+    function renderLivesGallery() {
+      const container = document.getElementById('livesGalleryView');
+      const allLives = [];
+
+      tournaments.forEach(t => {
+        if (t.activities) {
+          t.activities.forEach(act => {
+            if (act.liveUrl && act.liveUrl.trim() !== '') {
+              allLives.push({
+                tournamentName: t.name,
+                tournamentId: t.id,
+                activityName: act.name,
+                activityId: act.id,
+                liveUrl: act.liveUrl,
+                mvp: act.mvp,
+                matchesCount: act.matches ? act.matches.length : 0
+              });
+            }
+          });
+        }
+      });
+
+      if (allLives.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-2 glass-card p-8 rounded-2xl text-center space-y-3">
+            <span class="material-symbols-outlined text-4xl text-text-sub">videocam_off</span>
+            <h3 class="font-bold text-white text-lg">Nenhuma Live ou Gravação Cadastrada Ainda</h3>
+            <p class="text-xs text-text-sub max-w-md mx-auto">
+              Ao criar ou gerenciar uma atividade/rodada dentro de um torneio, você pode colear o link da transmissão do YouTube ou gravação para que ela apareça nesta galeria!
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = allLives.map(item => {
+        let ytId = null;
+        const ytMatch = item.liveUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|live\/|watch\?.+&v=))([\w-]{11})/);
+        if (ytMatch && ytMatch[1]) ytId = ytMatch[1];
+
+        return `
+          <div class="glass-card p-5 rounded-2xl border border-border-dark space-y-3 flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/30 uppercase">🏆 ${item.tournamentName}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-danger text-white flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span> LIVE</span>
+              </div>
+              <h4 class="font-extrabold text-white text-base">📅 ${item.activityName}</h4>
+              <p class="text-xs text-text-sub">${item.matchesCount} Partidas ${item.mvp ? `| ⭐ MVP: ${item.mvp}` : ''}</p>
+
+              ${ytId ? `
+                <div class="relative overflow-hidden rounded-xl aspect-video border border-border-dark bg-black mt-2">
+                  <iframe class="w-full h-full" src="https://www.youtube-nocookie.com/embed/${ytId}?autoplay=0" title="${item.activityName}" frameborder="0" allowfullscreen></iframe>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="flex items-center gap-2 pt-2 border-t border-border-dark/60">
+              <a href="${item.liveUrl}" target="_blank" class="flex-1 bg-danger hover:bg-red-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1 transition-all glow-danger">
+                <span class="material-symbols-outlined text-sm">open_in_new</span> Assistir Vídeo
+              </a>
+              <button onclick="activeTournamentId=${item.tournamentId}; openActivity(${item.activityId});" class="bg-surface-variant hover:bg-border-dark text-white font-semibold py-2.5 px-3 rounded-xl text-xs border border-border-dark flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-sm">settings</span> Gerenciar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleParticipant(playerName, isPresent) {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+
+      if (t.status === 'finished' || act.status === 'finished') return;
+      if (!act.participants) act.participants = [];
+
+      if (isPresent) {
+        if (!act.participants.includes(playerName)) act.participants.push(playerName);
+      } else {
+        act.participants = act.participants.filter(p => p !== playerName);
+      }
+
+      saveData();
+      renderActivityDetails();
+    }
+
+    function finishActivity() {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+
+      if (confirm(`Deseja finalizar a atividade "${act.name}"? Não será mais possível alterar participantes ou salvar partidas.`)) {
+        act.status = 'finished';
+        saveData();
+        renderActivityDetails();
+      }
+    }
+
+    function setActivityMvp(playerName) {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+      if (t.status === 'finished' || act.status === 'finished') return;
+
+      act.mvp = playerName;
+      saveData();
+      renderActivityDetails();
+    }
+
+    function deleteMatch(matchIndex) {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+      if (t.status === 'finished' || act.status === 'finished') return;
+
+      if (confirm('Deseja excluir esta partida?')) {
+        act.matches.splice(matchIndex, 1);
+        saveData();
+        renderActivityDetails();
+      }
+    }
+
+    // --- REGISTRAR PARTIDA ---
+    function openNewMatchModal() {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+
+      if (t.status === 'finished') return alert('Torneio finalizado!');
+      if (act.status === 'finished') return alert('Atividade finalizada!');
+
+      tempMatchStats = {};
+      const activePlayers = act.participants && act.participants.length > 0 ? act.participants : t.playerNames;
+
+      activePlayers.forEach(pName => {
+        tempMatchStats[pName] = { goals: 0, assists: 0 };
+      });
+
+      renderMatchCompilador();
+      showPage('page-registrar-partida');
+    }
+
+    function updateTempStat(pName, key, amount) {
+      const p = tempMatchStats[pName];
+      if (p) {
+        if (amount < 0 && p[key] <= 0) return;
+        p[key] += amount;
+        renderMatchCompilador();
+      }
+    }
+
+    function renderMatchCompilador() {
+      const container = document.getElementById('matchPlayersList');
+      container.innerHTML = Object.keys(tempMatchStats).map(pName => {
+        const p = tempMatchStats[pName];
+        return `
+          <div class="glass-card p-5 rounded-2xl border border-border-dark space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center text-sm">
+                ${pName.charAt(0).toUpperCase()}
+              </div>
+              <h4 class="font-extrabold text-white text-base">${pName}</h4>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Gols Counter -->
+              <div class="bg-background/80 p-3 rounded-xl border border-border-dark text-center space-y-2">
+                <span class="text-xs font-bold text-gold uppercase tracking-wider block">⚽ Gols</span>
+                <div class="flex items-center justify-center gap-3">
+                  <button onclick="updateTempStat('${pName}', 'goals', -1)" class="w-10 h-10 rounded-lg bg-surface-variant hover:bg-border-dark text-white font-black text-lg transition-all">-</button>
+                  <span class="text-2xl font-black text-white w-8">${p.goals}</span>
+                  <button onclick="updateTempStat('${pName}', 'goals', 1)" class="w-10 h-10 rounded-lg bg-primary text-black font-black text-lg transition-all glow-primary">+</button>
+                </div>
+              </div>
+
+              <!-- Assistencias Counter -->
+              <div class="bg-background/80 p-3 rounded-xl border border-border-dark text-center space-y-2">
+                <span class="text-xs font-bold text-danger uppercase tracking-wider block">👟 Assistências</span>
+                <div class="flex items-center justify-center gap-3">
+                  <button onclick="updateTempStat('${pName}', 'assists', -1)" class="w-10 h-10 rounded-lg bg-surface-variant hover:bg-border-dark text-white font-black text-lg transition-all">-</button>
+                  <span class="text-2xl font-black text-white w-8">${p.assists}</span>
+                  <button onclick="updateTempStat('${pName}', 'assists', 1)" class="w-10 h-10 rounded-lg bg-secondary text-white font-black text-lg transition-all">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function saveCurrentMatch() {
+      const t = tournaments.find(item => item.id === activeTournamentId);
+      const act = t.activities.find(a => a.id === activeActivityId);
+      if (t.status === 'finished' || act.status === 'finished') return;
+
+      const now = new Date();
+      const timeStr = `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+
+      act.matches.push({
+        id: Date.now(),
+        time: timeStr,
+        stats: JSON.parse(JSON.stringify(tempMatchStats))
+      });
+
+      saveData();
+      alert('Partida registrada com sucesso!');
+      showPage('page-atividade-detalhes');
+    }
+
+    // --- CONTROLE DE ABAS NAS ESTATÍSTICAS GERAIS ---
+    function switchStatsTab(tabName) {
+      const btnHist = document.getElementById('btn-tab-history');
+      const btnTour = document.getElementById('btn-tab-bytourney');
+      const tabHist = document.getElementById('tab-stats-history');
+      const tabTour = document.getElementById('tab-stats-bytourney');
+
+      if (tabName === 'history') {
+        btnHist.className = "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all bg-primary text-black shadow-md flex items-center justify-center gap-2";
+        btnTour.className = "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all text-text-sub hover:text-white flex items-center justify-center gap-2";
+        tabHist.classList.remove('hidden');
+        tabTour.classList.add('hidden');
+      } else {
+        btnTour.className = "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all bg-primary text-black shadow-md flex items-center justify-center gap-2";
+        btnHist.className = "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all text-text-sub hover:text-white flex items-center justify-center gap-2";
+        tabTour.classList.remove('hidden');
+        tabHist.classList.add('hidden');
+      }
+    }
+
+    // --- ESTATÍSTICAS GERAIS ---
+    function renderGeneralStats() {
+      renderHistoryStats();
+      renderByTournamentStats();
+    }
+
+    function renderHistoryStats() {
+      const container = document.getElementById('historyStatsView');
+      const globalTotals = {};
+      globalPlayers.forEach(p => { globalTotals[p] = { matches: 0, goals: 0, assists: 0, mvps: 0 }; });
+
+      tournaments.forEach(t => {
+        if (t.activities) {
+          t.activities.forEach(act => {
+            if (act.mvp) {
+              if (!globalTotals[act.mvp]) globalTotals[act.mvp] = { matches: 0, goals: 0, assists: 0, mvps: 0 };
+              globalTotals[act.mvp].mvps += 1;
+            }
+            if (act.participants) {
+              act.participants.forEach(pName => {
+                if (!globalTotals[pName]) globalTotals[pName] = { matches: 0, goals: 0, assists: 0, mvps: 0 };
+                globalTotals[pName].matches += 1;
+              });
+            }
+            if (act.matches) {
+              act.matches.forEach(m => {
+                Object.keys(m.stats).forEach(pName => {
+                  if (!globalTotals[pName]) globalTotals[pName] = { matches: 0, goals: 0, assists: 0, mvps: 0 };
+                  globalTotals[pName].goals += m.stats[pName].goals || 0;
+                  globalTotals[pName].assists += m.stats[pName].assists || 0;
+                });
+              });
+            }
+          });
+        }
+      });
+
+      const playerList = Object.keys(globalTotals);
+      if (playerList.length === 0) {
+        container.innerHTML = '<p class="text-text-sub text-sm">Nenhum dado cadastrado ainda.</p>';
+        return;
+      }
+
+      playerList.sort((a, b) => globalTotals[b].goals - globalTotals[a].goals);
+
+      container.innerHTML = playerList.map((pName, index) => {
+        const p = globalTotals[pName];
+        let medal = `#${index + 1}`;
+        if (index === 0) medal = '🥇';
+        else if (index === 1) medal = '🥈';
+        else if (index === 2) medal = '🥉';
+
+        return `
+          <div class="glass-card p-3 rounded-xl border border-border-dark flex items-center justify-between text-xs ${index === 0 ? 'border-gold/50 bg-gold/5' : ''}">
+            <div class="flex items-center gap-3">
+              <span class="font-bold text-base w-6 text-center">${medal}</span>
+              <span class="font-bold text-white text-sm">${pName}</span>
+            </div>
+            <span class="text-text-sub font-mono">🎮 ${p.matches}J | ⚽ ${p.goals}G | 👟 ${p.assists}A | ⭐ ${p.mvps} MVP</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderByTournamentStats() {
+      const container = document.getElementById('byTournamentStatsView');
+      if (tournaments.length === 0) {
+        container.innerHTML = '<p class="text-text-sub text-sm">Nenhum torneio cadastrado.</p>';
+        return;
+      }
+
+      container.innerHTML = tournaments.map(t => {
+        const isFinished = t.status === 'finished';
+        const totals = {};
+        t.playerNames.forEach(p => { totals[p] = { matches: 0, goals: 0, assists: 0, mvps: 0 }; });
+
+        if (t.activities) {
+          t.activities.forEach(act => {
+            if (act.mvp && totals[act.mvp]) totals[act.mvp].mvps += 1;
+            if (act.participants) {
+              act.participants.forEach(pName => {
+                if (totals[pName]) totals[pName].matches += 1;
+              });
+            }
+            if (act.matches) {
+              act.matches.forEach(m => {
+                Object.keys(m.stats).forEach(pName => {
+                  if (totals[pName]) {
+                    totals[pName].goals += m.stats[pName].goals || 0;
+                    totals[pName].assists += m.stats[pName].assists || 0;
+                  }
+                });
+              });
+            }
+          });
+        }
+
+        let maxGoals = -1, topGoalsPlayer = null;
+        let maxAssists = -1, topAssistsPlayer = null;
+        let maxMatches = -1, topMatchesPlayer = null;
+        let maxMvps = -1, topMvpPlayer = null;
+
+        if (isFinished) {
+          t.playerNames.forEach(pName => {
+            const p = totals[pName];
+            if (p.goals > maxGoals && p.goals > 0) { maxGoals = p.goals; topGoalsPlayer = pName; }
+            if (p.assists > maxAssists && p.assists > 0) { maxAssists = p.assists; topAssistsPlayer = pName; }
+            if (p.matches > maxMatches && p.matches > 0) { maxMatches = p.matches; topMatchesPlayer = pName; }
+            if (p.mvps > maxMvps && p.mvps > 0) { maxMvps = p.mvps; topMvpPlayer = pName; }
+          });
+        }
+
+        return `
+          <div class="space-y-2 border-b border-border-dark/60 pb-4">
+            <h4 class="font-extrabold text-primary text-sm flex items-center gap-2">
+              <span>🏆 Torneio: ${t.name}</span>
+              ${isFinished ? '<span class="px-2 py-0.5 rounded bg-danger/10 text-danger text-[10px] font-bold">FINALIZADO</span>' : ''}
+            </h4>
+            ${t.playerNames.map(pName => {
+              const p = totals[pName] || { matches: 0, goals: 0, assists: 0, mvps: 0 };
+              let badgeHtml = "";
+
+              if (isFinished) {
+                if (pName === topGoalsPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-gold/20 text-gold text-[10px] font-bold">👑 ARTILHEIRO</span>';
+                else if (pName === topAssistsPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-danger/20 text-danger text-[10px] font-bold">👟 GARÇOM</span>';
+                else if (pName === topMatchesPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-secondary/20 text-secondary text-[10px] font-bold">🎮 MARATONISTA</span>';
+                else if (pName === topMvpPlayer) badgeHtml = '<span class="px-2 py-0.5 rounded bg-tertiary/20 text-tertiary text-[10px] font-bold">⭐ MVP</span>';
+              }
+
+              return `
+                <div class="p-2.5 rounded-xl bg-surface-high/50 border border-border-dark/60 flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-white">${pName}</span>
+                    ${badgeHtml}
+                  </div>
+                  <span class="text-text-sub font-mono">🎮 ${p.matches}J | ⚽ ${p.goals}G | 👟 ${p.assists}A | ⭐ ${p.mvps}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- BACKUP E EXPORTAÇÃO ---
+    function prepareBackupPage() {
+      const select = document.getElementById('exportTournamentSelect');
+      select.innerHTML = tournaments.length === 0
+        ? '<option value="">Nenhum torneio cadastrado</option>'
+        : tournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    }
+
+    function exportTournamentCSV() {
+      const select = document.getElementById('exportTournamentSelect');
+      const tournamentId = parseInt(select.value);
+      const t = tournaments.find(item => item.id === tournamentId);
+      if (!t) return alert('Selecione um torneio!');
+
+      const totals = {};
+      t.playerNames.forEach(p => { totals[p] = { matches: 0, goals: 0, assists: 0, mvps: 0 }; });
+
+      if (t.activities) {
+        t.activities.forEach(act => {
+          if (act.mvp && totals[act.mvp]) totals[act.mvp].mvps += 1;
+          if (act.participants) {
+            act.participants.forEach(pName => {
+              if (totals[pName]) totals[pName].matches += 1;
+            });
+          }
+          if (act.matches) {
+            act.matches.forEach(m => {
+              Object.keys(m.stats).forEach(pName => {
+                if (totals[pName]) {
+                  totals[pName].goals += m.stats[pName].goals || 0;
+                  totals[pName].assists += m.stats[pName].assists || 0;
+                }
+              });
+            });
+          }
+        });
+      }
+
+      let csvContent = "\uFEFF";
+      csvContent += `Torneio;${t.name}\n`;
+      csvContent += "Jogador;Jogos;Gols;Assistencias;MVPs\n";
+
+      t.playerNames.forEach(pName => {
+        const p = totals[pName] || { matches: 0, goals: 0, assists: 0, mvps: 0 };
+        csvContent += `"${pName}";${p.matches};${p.goals};${p.assists};${p.mvps}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Backup_${t.name.replace(/\s+/g, '_')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function importTournamentCSV() {
+      const fileInput = document.getElementById('importFileInput');
+      const file = fileInput.files[0];
+      if (!file) return alert('Selecione um arquivo para importar!');
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r\n|\n/).map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length < 2) return alert('Arquivo inválido!');
+
+        const delimiter = lines[0].includes(';') ? ';' : ',';
+        let tournamentName = "Torneio Importado";
+        let startIndex = 0;
+
+        const firstCols = lines[0].split(delimiter);
+        if (firstCols[0].toLowerCase().includes("torneio")) {
+          tournamentName = firstCols[1] ? firstCols[1].replace(/"/g, '') : tournamentName;
+          startIndex = 2;
+        } else if (firstCols[0].toLowerCase().includes("jogador")) {
+          startIndex = 1;
+        }
+
+        const newTournament = {
+          id: Date.now(),
+          name: tournamentName.includes("(Importado)") ? tournamentName : tournamentName + " (Importado)",
+          status: 'active',
+          playerNames: [],
+          activities: [{
+            id: Date.now() + 1,
+            name: "Atividade Importada",
+            status: 'active',
+            mvp: '',
+            liveUrl: '',
+            participants: [],
+            matches: []
+          }]
+        };
+
+        const importedMatchStats = {};
+        for (let i = startIndex; i < lines.length; i++) {
+          const cols = lines[i].split(delimiter).map(c => c.replace(/"/g, '').trim());
+          if (cols.length >= 5) {
+            const name = cols[0];
+            newTournament.playerNames.push(name);
+            newTournament.activities[0].participants.push(name);
+            importedMatchStats[name] = {
+              goals: parseInt(cols[2]) || 0,
+              assists: parseInt(cols[3]) || 0
+            };
+          }
+        }
+
+        newTournament.activities[0].matches.push({
+          id: Date.now() + 2,
+          time: new Date().toLocaleDateString('pt-BR'),
+          stats: importedMatchStats
+        });
+
+        tournaments.push(newTournament);
+        saveData();
+        alert(`Torneio "${newTournament.name}" importado com sucesso!`);
+        fileInput.value = '';
+        showPage('page-meus-torneios');
+      };
+
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateHomeMetrics();
+    });
+  </script>
+</body>
+</html>
