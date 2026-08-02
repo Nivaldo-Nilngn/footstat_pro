@@ -32,17 +32,75 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('⚽ FootStat Pro'),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+              ),
+              child: const Icon(
+                Icons.sports_soccer,
+                size: 20,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            RichText(
+              text: const TextSpan(
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                children: [
+                  TextSpan(text: 'FootStat ', style: TextStyle(color: Colors.white)),
+                  TextSpan(text: 'Pro', style: TextStyle(color: AppColors.primary)),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.videocam, color: AppColors.danger),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LivesGalleryScreen()),
-              );
-            },
-            tooltip: 'Lives & Transmissões',
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LivesGalleryScreen()),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.danger.withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.danger,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'LIVES',
+                      style: TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -54,36 +112,56 @@ class HomeScreen extends ConsumerWidget {
             children: [
               // Hero Banner Card
               CustomCard(
-                backgroundColor: AppColors.cardSecondary,
-                padding: const EdgeInsets.all(20),
+                backgroundColor: AppColors.cardBackground,
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.15),
                         shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                       ),
                       child: const Icon(
                         Icons.sports_soccer,
-                        size: 40,
+                        size: 44,
                         color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Gerenciador de Torneios & Lives',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 20,
-                          ),
+                    const SizedBox(height: 14),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                        children: [
+                          TextSpan(text: 'Gerenciador de Torneios & ', style: TextStyle(color: Colors.white)),
+                          TextSpan(text: 'Lives', style: TextStyle(color: AppColors.primary)),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     const Text(
                       'Placar ao vivo, gols, assistências, MVPs e gravações de cada rodada.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.subtext,
                         fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CreateTournamentScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.add_circle, color: Colors.black, size: 20),
+                      label: const Text('CRIAR NOVO TORNEIO'),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 46),
                       ),
                     ),
                   ],

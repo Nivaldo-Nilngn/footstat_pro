@@ -7,6 +7,7 @@ class CustomCard extends StatelessWidget {
   final VoidCallback? onTap;
   final Border? border;
   final Color? backgroundColor;
+  final double borderRadius;
 
   const CustomCard({
     super.key,
@@ -15,6 +16,7 @@ class CustomCard extends StatelessWidget {
     this.onTap,
     this.border,
     this.backgroundColor,
+    this.borderRadius = 16,
   });
 
   @override
@@ -22,14 +24,14 @@ class CustomCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor ?? AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(borderRadius),
         border: border ?? Border.all(color: AppColors.border, width: 1),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(borderRadius),
           child: Padding(
             padding: padding ?? const EdgeInsets.all(16.0),
             child: child,
@@ -39,3 +41,4 @@ class CustomCard extends StatelessWidget {
     );
   }
 }
+

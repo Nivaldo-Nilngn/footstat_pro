@@ -132,25 +132,27 @@ class _CompetitorsScreenState extends ConsumerState<CompetitorsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('👥 Competidores Globais'),
+        title: const Text('👥 Gestão de Competidores'),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Form para adicionar
               CustomCard(
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Cadastrar Novo Competidor',
+                      'CADASTRA NOVO COMPETIDOR',
                       style: TextStyle(
                         color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -160,12 +162,12 @@ class _CompetitorsScreenState extends ConsumerState<CompetitorsScreen> {
                           child: TextField(
                             controller: _nameController,
                             decoration: const InputDecoration(
-                              hintText: 'Nome do jogador...',
+                              hintText: 'Ex: Gabriel Jesus',
                             ),
                             onSubmitted: (_) => _addPlayer(),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         PrimaryButton(
                           label: 'Adicionar',
                           icon: Icons.add,
@@ -177,44 +179,64 @@ class _CompetitorsScreenState extends ConsumerState<CompetitorsScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               const Text(
-                'Lista de Competidores',
+                'JOGADORES CADASTRADOS',
                 style: TextStyle(
                   color: AppColors.subtext,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
               Expanded(
                 child: players.isEmpty
                     ? const Center(
                         child: Text(
-                          'Nenhum competidor cadastrado.',
+                          'Nenhum competidor cadastrado ainda.',
                           style: TextStyle(color: AppColors.subtext),
                         ),
                       )
                     : ListView.separated(
                         itemCount: players.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final name = players[index];
+                          final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
                           return CustomCard(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             child: Row(
                               children: [
-                                const Icon(Icons.person, color: AppColors.primary),
-                                const SizedBox(width: 12),
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.15),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      initial,
+                                      style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
                                 Expanded(
                                   child: Text(
                                     name,
                                     style: const TextStyle(
-                                      color: AppColors.text,
+                                      color: Colors.white,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                      fontSize: 15,
                                     ),
                                   ),
                                 ),
@@ -241,3 +263,4 @@ class _CompetitorsScreenState extends ConsumerState<CompetitorsScreen> {
     );
   }
 }
+
