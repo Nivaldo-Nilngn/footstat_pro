@@ -18,13 +18,28 @@ class TeamsNotifier extends StateNotifier<List<Team>> {
     await _repository.saveTeams(state);
   }
 
-  Future<void> createTeam(String name, String primaryColorHex, String secondaryColorHex, String logoIcon) async {
+  Future<void> createTeam(
+    String name, {
+    String primaryColorHex = '#3B82F6',
+    String secondaryColorHex = '#171F33',
+    String logoIcon = 'shield',
+    String logoBase64 = '',
+    String stadium = '',
+    String city = '',
+    String foundedYear = '',
+    String description = '',
+  }) async {
     final newTeam = Team(
       id: DateTime.now().millisecondsSinceEpoch,
       name: name.trim(),
       primaryColorHex: primaryColorHex,
       secondaryColorHex: secondaryColorHex,
       logoIcon: logoIcon,
+      logoBase64: logoBase64,
+      stadium: stadium,
+      city: city,
+      foundedYear: foundedYear,
+      description: description,
       players: [],
     );
 

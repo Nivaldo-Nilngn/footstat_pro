@@ -475,101 +475,118 @@ class DashboardView extends ConsumerWidget {
     }
 
     final isWide = MediaQuery.of(context).size.width >= 700;
+    final now = DateTime.now();
+    String greeting = 'Bom dia';
+    if (now.hour >= 12 && now.hour < 18) {
+      greeting = 'Boa tarde';
+    } else if (now.hour >= 18) {
+      greeting = 'Boa noite';
+    }
 
     return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 14, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Greeting
+          Text(
+            '$greeting! ⚽',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Gerencie seus torneios e acompanhe ao vivo',
+            style: TextStyle(color: AppColors.subtext, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+
           // Hero Banner
-          CustomCard(
-            backgroundColor: AppColors.cardBackground,
-            padding: const EdgeInsets.all(28),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: AppColors.danger.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.danger.withOpacity(0.4)),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: 7,
+                        height: 7,
                         decoration: const BoxDecoration(
                           color: AppColors.danger,
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       const Text(
-                        'Live Streaming & Registro de Partidas',
+                        'LIVES & REGISTRO',
                         style: TextStyle(
                           color: AppColors.danger,
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 const Text(
-                  'Gerencie Torneios, Rodadas & Transmissões Ao Vivo',
+                  'Transmissões Ao Vivo & Registro de Partidas',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
                     height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 const Text(
-                  'Cadastre competidores, monte campeonatos, conte gols e assistências em tempo real e adicione os links das lives/gravações das partidas de cada dia para rever e fazer cortes!',
+                  'Acompanhe gols, assistências e estatísticas em tempo real. Adicione links das lives para rever depois!',
                   style: TextStyle(
                     color: AppColors.subtext,
-                    fontSize: 14,
-                    height: 1.5,
+                    fontSize: 12,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () => ref.read(activeTabProvider.notifier).state = ActiveTab.createTournament,
-                      icon: const Icon(Icons.add_circle, color: Colors.black, size: 20),
-                      label: const Text('Criar Torneio'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        await ref.read(tournamentsProvider.notifier).simulateFullTournamentDemo();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('⚡ Torneio completo simulado com sucesso!'),
-                              backgroundColor: AppColors.primary,
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.flash_on, color: AppColors.gold, size: 18),
-                      label: const Text('Simular Torneio Demo', style: TextStyle(color: AppColors.gold)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.gold),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => ref.read(activeTabProvider.notifier).state = ActiveTab.createTournament,
+                        icon: const Icon(Icons.add_circle, color: Colors.black, size: 18),
+                        label: const Text('Criar Torneio', style: TextStyle(fontSize: 13)),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                       ),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: () => ref.read(activeTabProvider.notifier).state = ActiveTab.lives,
-                      icon: const Icon(Icons.videocam, color: AppColors.danger, size: 18),
-                      label: const Text('Ver Lives das Partidas', style: TextStyle(color: Colors.white)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.border),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => ref.read(activeTabProvider.notifier).state = ActiveTab.lives,
+                        icon: const Icon(Icons.videocam, color: AppColors.danger, size: 18),
+                        label: const Text('Ver Lives', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: AppColors.border),
+                        ),
                       ),
                     ),
                   ],
@@ -577,37 +594,37 @@ class DashboardView extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // Bento Grid Metric Cards
+          // Stats Grid (2 columns on mobile)
           if (isWide)
             Row(
               children: [
                 Expanded(
                   child: _BentoMetricCard(
-                    title: 'COMPETIDORES GLOBAIS',
+                    title: 'JOGADORES',
                     value: '${globalPlayers.length}',
-                    subtitle: 'Jogadores Ativos',
+                    subtitle: 'Cadastrados',
                     icon: Icons.groups,
                     color: AppColors.primary,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: _BentoMetricCard(
-                    title: 'TORNEIOS CADASTRADOS',
+                    title: 'TORNEIOS',
                     value: '${tournaments.length}',
-                    subtitle: 'Campeonatos',
+                    subtitle: 'Criados',
                     icon: Icons.emoji_events,
                     color: AppColors.secondary,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: _BentoMetricCard(
-                    title: 'TOTAL DE GOLS REGISTRADOS',
+                    title: 'GOLS',
                     value: '$totalGoals',
-                    subtitle: 'Gols Acumulados',
+                    subtitle: 'Registrados',
                     icon: Icons.sports_soccer,
                     color: AppColors.gold,
                   ),
@@ -615,74 +632,79 @@ class DashboardView extends ConsumerWidget {
               ],
             )
           else
-            Column(
+            Row(
               children: [
-                _BentoMetricCard(
-                  title: 'COMPETIDORES GLOBAIS',
-                  value: '${globalPlayers.length}',
-                  subtitle: 'Jogadores Ativos',
-                  icon: Icons.groups,
-                  color: AppColors.primary,
+                Expanded(
+                  child: _BentoMetricCard(
+                    title: 'JOGADORES',
+                    value: '${globalPlayers.length}',
+                    subtitle: 'Cadastrados',
+                    icon: Icons.groups,
+                    color: AppColors.primary,
+                  ),
                 ),
-                const SizedBox(height: 12),
-                _BentoMetricCard(
-                  title: 'TORNEIOS CADASTRADOS',
-                  value: '${tournaments.length}',
-                  subtitle: 'Campeonatos',
-                  icon: Icons.emoji_events,
-                  color: AppColors.secondary,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _BentoMetricCard(
+                    title: 'TORNEIOS',
+                    value: '${tournaments.length}',
+                    subtitle: 'Criados',
+                    icon: Icons.emoji_events,
+                    color: AppColors.secondary,
+                  ),
                 ),
-                const SizedBox(height: 12),
-                _BentoMetricCard(
-                  title: 'TOTAL DE GOLS REGISTRADOS',
-                  value: '$totalGoals',
-                  subtitle: 'Gols Acumulados',
-                  icon: Icons.sports_soccer,
-                  color: AppColors.gold,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _BentoMetricCard(
+                    title: 'GOLS',
+                    value: '$totalGoals',
+                    subtitle: 'Registrados',
+                    icon: Icons.sports_soccer,
+                    color: AppColors.gold,
+                  ),
                 ),
               ],
             ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-          // Quick Access Header
+          // Quick Access
           Row(
             children: const [
-              Icon(Icons.apps, color: AppColors.primary, size: 22),
-              SizedBox(width: 8),
+              Icon(Icons.bolt, color: AppColors.gold, size: 20),
+              SizedBox(width: 6),
               Text(
                 'Acesso Rápido',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Quick Access Grid Cards
+          // Quick Access Grid
           GridView(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: isWide ? 3 : 2,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              mainAxisExtent: 135,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              mainAxisExtent: 110,
             ),
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: [
               _QuickCard(
                 icon: Icons.casino,
-                title: 'Sorteio de Times',
-                description: 'Gerador e balanceamento automático de times para pelada.',
+                title: 'Sorteio',
+                description: 'Gerar times',
                 color: AppColors.gold,
                 onTap: () {
-                  final players = globalPlayers;
                   showDialog(
                     context: context,
                     builder: (_) => TeamDraftDialog(
-                      availablePlayers: players,
+                      availablePlayers: globalPlayers,
                       tournaments: tournaments,
                     ),
                   );
@@ -690,41 +712,42 @@ class DashboardView extends ConsumerWidget {
               ),
               _QuickCard(
                 icon: Icons.calendar_month,
-                title: 'Calendário & Súmulas',
-                description: 'Consulte os placares, datas, tempo e súmulas dos confrontos.',
+                title: 'Calendário',
+                description: 'Súmulas e datas',
                 color: AppColors.tertiary,
                 onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.calendar,
               ),
               _QuickCard(
                 icon: Icons.person_add,
-                title: 'Competidores',
-                description: 'Cadastrar, renomear e excluir jogadores globais.',
+                title: 'Jogadores',
+                description: 'Gerenciar elenco',
                 color: AppColors.primary,
                 onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.competitors,
               ),
               _QuickCard(
-                icon: Icons.add_circle,
-                title: 'Criar Torneio',
-                description: 'Monte um novo campeonato com participantes.',
+                icon: Icons.shield,
+                title: 'Times',
+                description: 'Banco de times',
                 color: AppColors.primary,
-                onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.createTournament,
+                onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.competitors,
               ),
               _QuickCard(
                 icon: Icons.emoji_events,
-                title: 'Meus Torneios',
-                description: 'Gerencie rodadas, partidas e encerre campeonatos.',
+                title: 'Torneios',
+                description: 'Campeonatos',
                 color: AppColors.secondary,
                 onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.tournaments,
               ),
               _QuickCard(
                 icon: Icons.videocam,
-                title: 'Lives & Gravações',
-                description: 'Assista às transmissões e vídeos das partidas.',
+                title: 'Lives',
+                description: 'Transmissões',
                 color: AppColors.danger,
                 onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.lives,
               ),
             ],
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -749,65 +772,54 @@ class _BentoMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.subtext,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.3,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(icon, color: color, size: 14),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        subtitle,
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withOpacity(0.3)),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
             ),
-            child: Icon(icon, color: color, size: 24),
           ),
         ],
       ),
@@ -834,32 +846,26 @@ class _QuickCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const Icon(Icons.arrow_forward, color: AppColors.subtext, size: 16),
-            ],
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
           ),
           const Spacer(),
           Text(
             title,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -868,7 +874,7 @@ class _QuickCard extends StatelessWidget {
             description,
             style: const TextStyle(
               color: AppColors.subtext,
-              fontSize: 11,
+              fontSize: 10,
               height: 1.2,
             ),
             maxLines: 2,
