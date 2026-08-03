@@ -24,8 +24,6 @@
 .pub-cache/
 .pub/
 build/
-.env
-
 
 # Web specific
 build/web
