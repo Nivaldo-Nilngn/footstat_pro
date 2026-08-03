@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "footstat-pro",
     "public": "build/web",
     "ignore": [
       "firebase.json",
