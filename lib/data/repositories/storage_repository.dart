@@ -1,100 +1,120 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../domain/models/tournament.dart';
 import '../../domain/models/team.dart';
 
 class StorageRepository {
-  static const String _keyGlobalPlayers = 'football_global_players';
-  static const String _keyTournaments = 'football_tournaments';
-  static const String _keyTeams = 'football_teams';
+  final FirebaseDatabase _db = FirebaseDatabase.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  String? get userId => _auth.currentUser?.uid;
 
   Future<List<String>> loadGlobalPlayers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString(_keyGlobalPlayers);
-    if (jsonStr == null || jsonStr.isEmpty) return [];
-
+    if (userId == null) return [];
     try {
-      final List<dynamic> list = jsonDecode(jsonStr);
-      return list.map((e) => e.toString()).toList();
+      final snapshot = await _db.ref('users/$userId/data/globalPlayers').get();
+      if (snapshot.exists && snapshot.value != null) {
+        final Map<dynamic, dynamic> map = snapshot.value as Map<dynamic, dynamic>;
+        final List<dynamic> list = map['players'] ?? [];
+        return list.map((e) => e.toString()).toList();
+      }
+      return [];
     } catch (_) {
       return [];
     }
   }
 
   Future<void> saveGlobalPlayers(List<String> players) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyGlobalPlayers, jsonEncode(players));
+    if (userId == null) return;
+    await _db.ref('users/$userId/data/globalPlayers').set({
+      'players': players,
+    });
   }
 
   Future<List<Tournament>> loadTournaments() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString(_keyTournaments);
-    if (jsonStr == null || jsonStr.isEmpty) return [];
-
+    if (userId == null) return [];
     try {
-      final List<dynamic> list = jsonDecode(jsonStr);
-      return list.map((item) {
-        final map = item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item as Map);
-        return Tournament.fromJson(map);
-      }).toList();
+      final snapshot = await _db.ref('users/$userId/tournaments').get();
+      if (snapshot.exists && snapshot.value != null) {
+        final Map<dynamic, dynamic> map = snapshot.value as Map<dynamic, dynamic>;
+        final List<Tournament> tournaments = [];
+        
+        map.forEach((key, value) {
+          final tMap = Map<String, dynamic>.from(value as Map);
+          tournaments.add(Tournament.fromJson(tMap));
+        });
+        
+        return tournaments;
+      }
+      return [];
     } catch (_) {
       return [];
     }
   }
 
   Future<void> saveTournaments(List<Tournament> tournaments) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = tournaments.map((t) => t.toJson()).toList();
-    await prefs.setString(_keyTournaments, jsonEncode(jsonList));
+    if (userId == null) return;
+    final Map<String, dynamic> updates = {};
+    for (var t in tournaments) {
+      final data = t.toJson();
+      data['creatorId'] = userId;
+      updates[t.id.toString()] = data;
+    }
+    await _db.ref('users/$userId/tournaments').set(updates);
   }
 
   Future<List<Team>> loadTeams() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString(_keyTeams);
-    if (jsonStr == null || jsonStr.isEmpty) {
-      // Default initial seed teams
-      return [
-        const Team(
-          id: 101,
-          name: 'Tigres do Society',
-          primaryColorHex: '#FF4D4D',
-          secondaryColorHex: '#171F33',
-          logoIcon: 'shield',
-          players: ['Ninho', 'Cristiano', 'Haaland'],
-          captain: 'Ninho',
-          goalkeeper: 'Haaland',
-          penaltyTaker: 'Cristiano',
-          freeKickTaker: 'Ninho',
-        ),
-        const Team(
-          id: 102,
-          name: 'Boca Pelada FC',
-          primaryColorHex: '#3B82F6',
-          secondaryColorHex: '#1E293B',
-          logoIcon: 'sports_soccer',
-          players: ['Messi', 'Neymar', 'Vinicius Jr'],
-          captain: 'Messi',
-          goalkeeper: 'Neymar',
-          penaltyTaker: 'Messi',
-          freeKickTaker: 'Vinicius Jr',
-        ),
-      ];
-    }
-
+    if (userId == null) return _getDefaultTeams();
     try {
-      final List<dynamic> list = jsonDecode(jsonStr);
-      return list.map((item) {
-        final map = item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item as Map);
-        return Team.fromJson(map);
-      }).toList();
+      final snapshot = await _db.ref('users/$userId/data/teams').get();
+      if (snapshot.exists && snapshot.value != null) {
+        final Map<dynamic, dynamic> map = snapshot.value as Map<dynamic, dynamic>;
+        final List<dynamic> list = map['teams'] ?? [];
+        return list.map((item) {
+          final itemMap = item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item as Map);
+          return Team.fromJson(itemMap);
+        }).toList();
+      }
+      return _getDefaultTeams();
     } catch (_) {
-      return [];
+      return _getDefaultTeams();
     }
   }
 
   Future<void> saveTeams(List<Team> teams) async {
-    final prefs = await SharedPreferences.getInstance();
+    if (userId == null) return;
     final jsonList = teams.map((t) => t.toJson()).toList();
-    await prefs.setString(_keyTeams, jsonEncode(jsonList));
+    await _db.ref('users/$userId/data/teams').set({
+      'teams': jsonList,
+    });
+  }
+
+  List<Team> _getDefaultTeams() {
+    return [
+      const Team(
+        id: 101,
+        name: 'Tigres do Society',
+        primaryColorHex: '#FF4D4D',
+        secondaryColorHex: '#171F33',
+        logoIcon: 'shield',
+        players: ['Ninho', 'Cristiano', 'Haaland'],
+        captain: 'Ninho',
+        goalkeeper: 'Haaland',
+        penaltyTaker: 'Cristiano',
+        freeKickTaker: 'Ninho',
+      ),
+      const Team(
+        id: 102,
+        name: 'Boca Pelada FC',
+        primaryColorHex: '#3B82F6',
+        secondaryColorHex: '#1E293B',
+        logoIcon: 'sports_soccer',
+        players: ['Messi', 'Neymar', 'Vinicius Jr'],
+        captain: 'Messi',
+        goalkeeper: 'Neymar',
+        penaltyTaker: 'Messi',
+        freeKickTaker: 'Vinicius Jr',
+      ),
+    ];
   }
 }

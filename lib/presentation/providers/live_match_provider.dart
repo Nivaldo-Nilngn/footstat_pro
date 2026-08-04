@@ -8,6 +8,7 @@ class LiveMatchState {
   final bool isMinimized;
   final int tournamentId;
   final int activityId;
+  final int? matchId;
   final String teamAName;
   final String teamBName;
   final int selectedDurationMinutes; // Total match duration (e.g. 30 = 15min per half)
@@ -28,6 +29,7 @@ class LiveMatchState {
     this.isMinimized = false,
     this.tournamentId = 0,
     this.activityId = 0,
+    this.matchId,
     this.teamAName = 'Time A',
     this.teamBName = 'Time B',
     this.selectedDurationMinutes = 30,
@@ -130,6 +132,7 @@ class LiveMatchNotifier extends StateNotifier<LiveMatchState> {
   void initMatch({
     required int tournamentId,
     required int activityId,
+    int? matchId,
     required String teamAName,
     required String teamBName,
     required int durationMinutes,
@@ -141,9 +144,9 @@ class LiveMatchNotifier extends StateNotifier<LiveMatchState> {
   }) {
     state = LiveMatchState(
       isLiveActive: true,
-      isMinimized: false,
       tournamentId: tournamentId,
       activityId: activityId,
+      matchId: matchId,
       teamAName: teamAName,
       teamBName: teamBName,
       selectedDurationMinutes: durationMinutes,
@@ -154,6 +157,7 @@ class LiveMatchNotifier extends StateNotifier<LiveMatchState> {
       playerStats: Map.from(playerStats),
       shirtNumbers: Map.from(shirtNumbers),
       playerPositions: Map.from(playerPositions),
+      timelineEvents: [],
     );
   }
 
@@ -309,6 +313,7 @@ class LiveMatchNotifier extends StateNotifier<LiveMatchState> {
         'player': 'Árbitro',
         'team': 'Jogo',
         'detail': 'Apito Manual do Árbitro (${state.periodLabel})',
+        'type': 'system',
       },
       ...state.timelineEvents,
     ];
@@ -338,6 +343,7 @@ class LiveMatchNotifier extends StateNotifier<LiveMatchState> {
         'player': 'Arbitragem',
         'team': 'Jogo',
         'detail': '+$minutes min de Acréscimo adicionados ao ${state.periodLabel}!',
+        'type': 'system',
       },
       ...state.timelineEvents,
     ];
@@ -377,22 +383,28 @@ class LiveMatchNotifier extends StateNotifier<LiveMatchState> {
       final timeStr = state.formattedTime;
       String emoji = '⚡';
       String detail = statType;
+      String type = 'system';
 
       if (statType == 'goals') {
         emoji = '⚽';
         detail = 'GOLAZO! (${state.periodLabel})';
+        type = 'goal';
       } else if (statType == 'assists') {
         emoji = '🎯';
         detail = 'Assistência (${state.periodLabel})';
+        type = 'assist';
       } else if (statType == 'fouls') {
         emoji = '🛑';
         detail = 'Falta Cometida (${state.periodLabel})';
+        type = 'foul';
       } else if (statType == 'yellowCards') {
         emoji = '🟨';
         detail = 'Cartão Amarelo (${state.periodLabel})';
+        type = 'yellow_card';
       } else if (statType == 'redCards') {
         emoji = '🟥';
         detail = 'Cartão Vermelho / Expulsão (${state.periodLabel})';
+        type = 'red_card';
       }
 
       newEvents.insert(0, {
@@ -401,6 +413,7 @@ class LiveMatchNotifier extends StateNotifier<LiveMatchState> {
         'player': player,
         'team': teamName,
         'detail': detail,
+        'type': type,
       });
     }
 

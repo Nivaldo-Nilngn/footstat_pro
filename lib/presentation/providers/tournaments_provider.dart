@@ -5,6 +5,7 @@ import '../../domain/models/tournament.dart';
 import '../../domain/models/activity.dart';
 import '../../domain/models/match_record.dart';
 import '../../domain/models/match_stats.dart';
+import '../../domain/models/game_template.dart';
 import 'players_provider.dart';
 
 class TournamentsNotifier extends StateNotifier<List<Tournament>> {
@@ -19,20 +20,28 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
   }
 
   Future<void> _save() async {
-    await _repository.saveTournaments(state);
+    try {
+      await _repository.saveTournaments(state);
+    } catch (e) {
+      print('Erro ao salvar no Firestore: $e');
+      // Continua rodando em memória
+    }
   }
 
-  Future<void> createTournament(String name, List<String> playerNames) async {
+  Future<void> createTournament(String name, List<String> playerNames, {GameTemplate template = GameTemplate.football, String liveUrl = '', bool isIndividualMode = false}) async {
     final newTournament = Tournament(
       id: DateTime.now().millisecondsSinceEpoch,
       name: name.trim(),
       status: 'active',
+      gameTemplate: template.name,
+      liveUrl: liveUrl,
+      isIndividualMode: isIndividualMode,
       playerNames: List.from(playerNames),
       activities: [],
     );
 
     state = [...state, newTournament];
-    await _save();
+    _save(); // Non-blocking
   }
 
   Future<void> renameTournament(int id, String newName) async {
@@ -108,6 +117,8 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
           final act = Activity(
             id: DateTime.now().millisecondsSinceEpoch,
             name: 'Tabela de Confrontos',
+            gameTemplate: t.gameTemplate,
+            activeMetrics: TemplateMetrics.metrics[GameTemplate.values.firstWhere((e) => e.name == t.gameTemplate, orElse: () => GameTemplate.football)] ?? [],
             participants: List.from(t.playerNames),
             matches: [newMatch],
           );
@@ -129,7 +140,7 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
     await _save();
   }
 
-  Future<void> createActivity(int tournamentId, String activityName) async {
+  Future<void> createActivity(int tournamentId, String activityName, {GameTemplate template = GameTemplate.football}) async {
     state = state.map((t) {
       if (t.id == tournamentId && !t.isFinished) {
         final newActivity = Activity(
@@ -138,6 +149,8 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
           status: 'active',
           mvp: '',
           liveUrl: '',
+          gameTemplate: template.name,
+          activeMetrics: TemplateMetrics.metrics[template] ?? [],
           participants: List.from(t.playerNames),
           matches: [],
         );
@@ -227,24 +240,24 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
     await _save();
   }
 
-  Future<void> saveMatch(int tournamentId, int activityId, Map<String, MatchStats> tempStats) async {
-    final now = DateTime.now();
-    final day = now.day.toString().padLeft(2, '0');
-    final month = now.month.toString().padLeft(2, '0');
-    final hour = now.hour.toString().padLeft(2, '0');
-    final minute = now.minute.toString().padLeft(2, '0');
-    final timeStr = '$day/$month/${now.year} $hour:$minute';
-
+  Future<void> saveMatch(int tournamentId, int activityId, int matchId, Map<String, MatchStats> tempStats, List<Map<String, String>> timelineEvents) async {
     state = state.map((t) {
       if (t.id == tournamentId && !t.isFinished) {
         final updatedActivities = t.activities.map((act) {
           if (act.id == activityId && !act.isFinished) {
-            final newMatch = MatchRecord(
-              id: DateTime.now().millisecondsSinceEpoch,
-              time: timeStr,
-              stats: Map.from(tempStats),
-            );
-            return act.copyWith(matches: [...act.matches, newMatch]);
+            
+            final updatedMatches = act.matches.map((m) {
+              if (m.id == matchId) {
+                return m.copyWith(
+                  stats: Map.from(tempStats),
+                  timelineEvents: List<Map<String, dynamic>>.from(timelineEvents),
+                  status: 'finished',
+                );
+              }
+              return m;
+            }).toList();
+
+            return act.copyWith(matches: updatedMatches);
           }
           return act;
         }).toList();
@@ -303,7 +316,10 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
       stats[carded] = currentC.copyWith(yellowCards: currentC.yellowCards + 1);
     }
 
-    await saveMatch(tournamentId, activityId, stats);
+    if (act.matches.isNotEmpty) {
+      final lastMatch = act.matches.last;
+      await saveMatch(tournamentId, activityId, lastMatch.id, stats, []);
+    }
   }
 
   Future<void> simulateFullTournamentDemo() async {
@@ -344,7 +360,11 @@ class TournamentsNotifier extends StateNotifier<List<Tournament>> {
           final g = rand.nextInt(3);
           final a = rand.nextInt(2);
           final y = rand.nextDouble() > 0.85 ? 1 : 0;
-          mStats[p] = MatchStats(goals: g, assists: a, yellowCards: y);
+          mStats[p] = MatchStats(customStats: {
+            'Gols': g,
+            'Assistências': a,
+            'Cartões Amarelos': y,
+          });
         }
         matches.add(MatchRecord(
           id: DateTime.now().millisecondsSinceEpoch + r * 1000 + m,

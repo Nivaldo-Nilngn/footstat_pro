@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../providers/players_provider.dart';
 import '../providers/teams_provider.dart';
 import '../providers/tournaments_provider.dart';
+import '../../domain/models/game_template.dart';
 import '../widgets/custom_card.dart';
 import '../widgets/primary_button.dart';
 import 'main_shell_screen.dart';
@@ -17,13 +18,18 @@ class CreateTournamentScreen extends ConsumerStatefulWidget {
 
 class _CreateTournamentScreenState extends ConsumerState<CreateTournamentScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _liveUrlController = TextEditingController();
+  final TextEditingController _newPlayerController = TextEditingController();
   final Set<int> _selectedTeamIds = {};
   final Set<String> _selectedIndividualPlayers = {};
   bool _useTeamsMode = true;
+  GameTemplate _selectedTemplate = GameTemplate.football;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _liveUrlController.dispose();
+    _newPlayerController.dispose();
     super.dispose();
   }
 
@@ -82,6 +88,9 @@ class _CreateTournamentScreenState extends ConsumerState<CreateTournamentScreen>
     await ref.read(tournamentsProvider.notifier).createTournament(
           name,
           allTournamentPlayers.toList(),
+          template: _selectedTemplate,
+          liveUrl: _liveUrlController.text.trim(),
+          isIndividualMode: !_useTeamsMode,
         );
 
     if (mounted) {
@@ -127,8 +136,95 @@ class _CreateTournamentScreenState extends ConsumerState<CreateTournamentScreen>
                     const SizedBox(height: 8),
                     TextField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
                         hintText: 'Ex: Copa dos Campeões 2026',
+                        hintStyle: const TextStyle(color: AppColors.subtext),
+                        filled: true,
+                        fillColor: AppColors.surfaceHigh,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'URL da Transmissão (Ao Vivo)',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _liveUrlController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Ex: https://youtube.com/... (Opcional)',
+                        hintStyle: const TextStyle(color: AppColors.subtext),
+                        filled: true,
+                        fillColor: AppColors.surfaceHigh,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Template Selector
+              CustomCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Modalidade (Game Template)',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceHigh,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<GameTemplate>(
+                          value: _selectedTemplate,
+                          isExpanded: true,
+                          dropdownColor: AppColors.surfaceHigh,
+                          icon: const Icon(Icons.arrow_drop_down, color: AppColors.subtext),
+                          items: GameTemplate.values.map((template) {
+                            return DropdownMenuItem(
+                              value: template,
+                              child: Text(
+                                TemplateMetrics.getName(template),
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedTemplate = val);
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -342,13 +438,58 @@ class _CreateTournamentScreenState extends ConsumerState<CreateTournamentScreen>
                       ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                // Add new player field
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newPlayerController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Digite o nome e adicione...',
+                          hintStyle: const TextStyle(color: AppColors.subtext),
+                          filled: true,
+                          fillColor: AppColors.surfaceHigh,
+                          isDense: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onSubmitted: (val) {
+                          if (val.trim().isNotEmpty) {
+                            ref.read(playersProvider.notifier).addPlayer(val.trim());
+                            setState(() {
+                              _selectedIndividualPlayers.add(val.trim());
+                              _newPlayerController.clear();
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.person_add, color: AppColors.primary),
+                      onPressed: () {
+                        final val = _newPlayerController.text.trim();
+                        if (val.isNotEmpty) {
+                          ref.read(playersProvider.notifier).addPlayer(val);
+                          setState(() {
+                            _selectedIndividualPlayers.add(val);
+                            _newPlayerController.clear();
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
                 Expanded(
-                  child: globalPlayers.isEmpty
+                  child: globalPlayers.isEmpty && _selectedIndividualPlayers.isEmpty
                       ? const Center(
                           child: Text(
-                            'Nenhum jogador cadastrado.',
+                            'Nenhum jogador cadastrado. Adicione acima!',
                             style: TextStyle(color: AppColors.subtext),
                           ),
                         )

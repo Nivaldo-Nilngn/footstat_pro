@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../providers/profile_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../providers/players_provider.dart';
 import '../providers/tournaments_provider.dart';
@@ -15,6 +17,7 @@ import 'general_stats_screen.dart';
 import 'matches_calendar_screen.dart';
 import 'hall_of_fame_screen.dart';
 import 'backup_screen.dart';
+import 'profile_screen.dart';
 
 enum ActiveTab {
   dashboard,
@@ -26,6 +29,7 @@ enum ActiveTab {
   hallOfFame,
   backup,
   createTournament,
+  profile,
 }
 
 final activeTabProvider = StateProvider<ActiveTab>((ref) => ActiveTab.dashboard);
@@ -154,6 +158,8 @@ class MainShellScreen extends ConsumerWidget {
         return const BackupScreen();
       case ActiveTab.createTournament:
         return const CreateTournamentScreen();
+      case ActiveTab.profile:
+        return const ProfileScreen();
     }
   }
 }
@@ -164,6 +170,7 @@ class _DesktopSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeTab = ref.watch(activeTabProvider);
+    final userProfile = ref.watch(profileProvider);
 
     return Container(
       width: 260,
@@ -294,59 +301,58 @@ class _DesktopSidebar extends ConsumerWidget {
             ),
           ),
 
-          // Footer Badge
-          Container(
+          // Footer Profile Badge
+          GestureDetector(
+            onTap: () => ref.read(activeTabProvider.notifier).state = ActiveTab.profile,
+            child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.surfaceHigh.withOpacity(0.6),
+              color: AppColors.surfaceHigh.withAlpha((0.6 * 255).toInt()),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border.withOpacity(0.6)),
+              border: Border.all(color: AppColors.border.withAlpha((0.6 * 255).toInt())),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Sistema Ativo',
-                      style: TextStyle(color: AppColors.subtext, fontSize: 11),
-                    ),
-                  ],
+                CircleAvatar(
+                  radius: 16,
+                  backgroundImage: userProfile != null ? NetworkImage(userProfile.avatarUrl) : null,
+                  backgroundColor: AppColors.primary.withAlpha((0.2 * 255).toInt()),
+                  child: userProfile == null ? const Icon(Icons.person, size: 16, color: AppColors.primary) : null,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.border),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        userProfile?.name ?? 'Carregando...',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        userProfile?.tag ?? 'Offline',
+                        style: const TextStyle(color: AppColors.subtext, fontSize: 11),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'v2.7 Pro',
-                    style: TextStyle(
-                      color: AppColors.subtext,
-                      fontSize: 10,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: AppColors.danger, size: 20),
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    // AuthState changes in the app root will handle redirect
+                  },
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
-
+}
 class _SidebarNavBtn extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -427,6 +433,8 @@ class _MobileBottomBar extends ConsumerWidget {
           return 3;
         case ActiveTab.stats:
           return 4;
+        case ActiveTab.profile:
+          return 5;
         default:
           return 0;
       }
@@ -441,15 +449,18 @@ class _MobileBottomBar extends ConsumerWidget {
           ActiveTab.tournaments,
           ActiveTab.lives,
           ActiveTab.stats,
+          ActiveTab.profile,
         ];
         ref.read(activeTabProvider.notifier).state = tabs[index];
       },
+      type: BottomNavigationBarType.fixed,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Início'),
         BottomNavigationBarItem(icon: Icon(Icons.groups_outlined), label: 'Jogadores'),
         BottomNavigationBarItem(icon: Icon(Icons.emoji_events_outlined), label: 'Torneios'),
         BottomNavigationBarItem(icon: Icon(Icons.videocam_outlined), label: 'Lives'),
         BottomNavigationBarItem(icon: Icon(Icons.leaderboard_outlined), label: 'Stats'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Perfil'),
       ],
     );
   }

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../core/constants/app_colors.dart';
+import '../../domain/models/game_template.dart';
 import '../providers/players_provider.dart';
 import '../providers/tournaments_provider.dart';
 import '../widgets/custom_card.dart';
-import '../widgets/rank_badge.dart';
 
 class GeneralStatsScreen extends ConsumerStatefulWidget {
   const GeneralStatsScreen({super.key});
@@ -15,6 +16,7 @@ class GeneralStatsScreen extends ConsumerStatefulWidget {
 
 class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  GameTemplate _selectedTemplate = GameTemplate.football;
 
   @override
   void initState() {
@@ -33,7 +35,7 @@ class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with Si
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('📊 Estatísticas Gerais & Analytics'),
+        title: const Text('📊 Analytics Avançado'),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -44,17 +46,69 @@ class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with Si
           labelPadding: const EdgeInsets.symmetric(horizontal: 12),
           tabs: const [
             Tab(text: 'Histórico'),
-            Tab(text: 'Gráficos'),
+            Tab(text: 'Gráficos (Top 5)'),
             Tab(text: 'Por Torneio'),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _AllTimeHistoryTab(),
-          _AnalyticsChartsTab(),
-          _ByTournamentTab(),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: AppColors.cardBackground,
+            child: Row(
+              children: [
+                const Icon(Icons.filter_list, color: AppColors.primary, size: 18),
+                const SizedBox(width: 8),
+                const Text(
+                  'Modalidade:',
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceHigh,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<GameTemplate>(
+                        value: _selectedTemplate,
+                        isExpanded: true,
+                        dropdownColor: AppColors.surfaceHigh,
+                        icon: const Icon(Icons.arrow_drop_down, color: AppColors.subtext),
+                        items: GameTemplate.values.map((template) {
+                          return DropdownMenuItem(
+                            value: template,
+                            child: Text(
+                              TemplateMetrics.getName(template),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedTemplate = val);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _AllTimeHistoryTab(template: _selectedTemplate),
+                _AnalyticsChartsTab(template: _selectedTemplate),
+                _ByTournamentTab(template: _selectedTemplate),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -62,47 +116,51 @@ class _GeneralStatsScreenState extends ConsumerState<GeneralStatsScreen> with Si
 }
 
 class _AllTimeHistoryTab extends ConsumerWidget {
-  const _AllTimeHistoryTab();
+  final GameTemplate template;
+  const _AllTimeHistoryTab({required this.template});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final globalPlayers = ref.watch(playersProvider);
     final tournaments = ref.watch(tournamentsProvider);
+    final activeMetrics = TemplateMetrics.metrics[template] ?? [];
 
     final globalTotals = <String, Map<String, int>>{};
     for (final p in globalPlayers) {
-      globalTotals[p] = {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0};
+      globalTotals[p] = {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0};
     }
 
     for (final t in tournaments) {
+      if (t.gameTemplate != template.name) continue;
+
       for (final act in t.activities) {
         if (act.mvp.isNotEmpty) {
-          globalTotals.putIfAbsent(act.mvp, () => {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0});
+          globalTotals.putIfAbsent(act.mvp, () => {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0});
           globalTotals[act.mvp]!['mvps'] = (globalTotals[act.mvp]!['mvps'] ?? 0) + 1;
         }
 
         for (final pName in act.participants) {
-          globalTotals.putIfAbsent(pName, () => {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0});
+          globalTotals.putIfAbsent(pName, () => {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0});
           globalTotals[pName]!['matches'] = (globalTotals[pName]!['matches'] ?? 0) + 1;
         }
 
         for (final m in act.matches) {
           m.stats.forEach((pName, s) {
-            globalTotals.putIfAbsent(pName, () => {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0});
-            globalTotals[pName]!['goals'] = (globalTotals[pName]!['goals'] ?? 0) + s.goals;
-            globalTotals[pName]!['assists'] = (globalTotals[pName]!['assists'] ?? 0) + s.assists;
+            globalTotals.putIfAbsent(pName, () => {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0});
+            for (var metric in activeMetrics) {
+              globalTotals[pName]![metric] = (globalTotals[pName]![metric] ?? 0) + (s.customStats[metric] ?? 0);
+            }
           });
         }
       }
     }
 
+    final sortMetric = activeMetrics.isNotEmpty ? activeMetrics.first : 'matches';
     final sortedPlayers = globalTotals.keys.toList()
-      ..sort((a, b) => globalTotals[b]!['goals']!.compareTo(globalTotals[a]!['goals']!));
+      ..sort((a, b) => (globalTotals[b]![sortMetric] ?? 0).compareTo(globalTotals[a]![sortMetric] ?? 0));
 
-    if (sortedPlayers.isEmpty) {
-      return const Center(
-        child: Text('Nenhum dado cadastrado ainda.', style: TextStyle(color: AppColors.subtext)),
-      );
+    if (sortedPlayers.isEmpty || activeMetrics.isEmpty) {
+      return const Center(child: Text('Nenhum dado cadastrado para esta modalidade.', style: TextStyle(color: AppColors.subtext)));
     }
 
     return Padding(
@@ -111,13 +169,8 @@ class _AllTimeHistoryTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '📊 Ranking Acumulado de Todos os Tempos',
+            '📊 Ranking Acumulado',
             style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Soma de todos os jogos, gols, assistências e MVPs obtidos em todos os torneios.',
-            style: TextStyle(color: AppColors.subtext, fontSize: 12),
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -134,22 +187,27 @@ class _AllTimeHistoryTab extends ConsumerWidget {
                     children: [
                       Text(
                         '#${index + 1}',
-                        style: TextStyle(
-                          color: index == 0 ? AppColors.gold : AppColors.subtext,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: index == 0 ? AppColors.gold : AppColors.subtext, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          pName,
-                          style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 15),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(pName, style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 15)),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                Text('🎮 ${p['matches']} J', style: const TextStyle(color: AppColors.subtext, fontSize: 11)),
+                                Text('⭐ ${p['mvps']} MVP', style: const TextStyle(color: AppColors.subtext, fontSize: 11)),
+                                ...activeMetrics.map((m) {
+                                  return Text('• ${p[m]} $m', style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600));
+                                }).toList(),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                      Text(
-                        '🎮 ${p['matches']} J | ⚽ ${p['goals']} G | 👟 ${p['assists']} A | ⭐ ${p['mvps']} MVP',
-                        style: const TextStyle(color: AppColors.subtext, fontSize: 12),
                       ),
                     ],
                   ),
@@ -164,188 +222,153 @@ class _AllTimeHistoryTab extends ConsumerWidget {
 }
 
 class _AnalyticsChartsTab extends ConsumerWidget {
-  const _AnalyticsChartsTab();
+  final GameTemplate template;
+  const _AnalyticsChartsTab({required this.template});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final globalPlayers = ref.watch(playersProvider);
     final tournaments = ref.watch(tournamentsProvider);
+    final activeMetrics = TemplateMetrics.metrics[template] ?? [];
 
     final totals = <String, Map<String, int>>{};
     for (final p in globalPlayers) {
-      totals[p] = {'goals': 0, 'assists': 0, 'mvps': 0};
+      totals[p] = {for (var m in activeMetrics) m: 0};
     }
 
     for (final t in tournaments) {
+      if (t.gameTemplate != template.name) continue;
       for (final act in t.activities) {
-        if (act.mvp.isNotEmpty) {
-          totals.putIfAbsent(act.mvp, () => {'goals': 0, 'assists': 0, 'mvps': 0});
-          totals[act.mvp]!['mvps'] = (totals[act.mvp]!['mvps'] ?? 0) + 1;
-        }
         for (final m in act.matches) {
           m.stats.forEach((pName, s) {
-            totals.putIfAbsent(pName, () => {'goals': 0, 'assists': 0, 'mvps': 0});
-            totals[pName]!['goals'] = (totals[pName]!['goals'] ?? 0) + s.goals;
-            totals[pName]!['assists'] = (totals[pName]!['assists'] ?? 0) + s.assists;
+            totals.putIfAbsent(pName, () => {for (var m in activeMetrics) m: 0});
+            for (var metric in activeMetrics) {
+              totals[pName]![metric] = (totals[pName]![metric] ?? 0) + (s.customStats[metric] ?? 0);
+            }
           });
         }
       }
     }
 
-    // Top 5 Goals
-    final topGoals = totals.entries.toList()
-      ..sort((a, b) => b.value['goals']!.compareTo(a.value['goals']!));
-    final top5Goals = topGoals.take(5).where((e) => e.value['goals']! > 0).toList();
+    if (activeMetrics.isEmpty) {
+      return const Center(child: Text('Nenhuma métrica disponível.', style: TextStyle(color: AppColors.subtext)));
+    }
 
-    // Top 5 Assists
-    final topAssists = totals.entries.toList()
-      ..sort((a, b) => b.value['assists']!.compareTo(a.value['assists']!));
-    final top5Assists = topAssists.take(5).where((e) => e.value['assists']! > 0).toList();
-
-    return SingleChildScrollView(
+    return ListView.builder(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top Artilheiros Chart Card
-          CustomCard(
+      itemCount: activeMetrics.length,
+      itemBuilder: (context, index) {
+        final metric = activeMetrics[index];
+        final sorted = totals.entries.toList()
+          ..sort((a, b) => b.value[metric]!.compareTo(a.value[metric]!));
+        final top5 = sorted.take(5).where((e) => e.value[metric]! > 0).toList();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 24.0),
+          child: CustomCard(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.sports_soccer, color: AppColors.gold, size: 20),
-                    SizedBox(width: 8),
+                    const Icon(Icons.bar_chart, color: AppColors.gold, size: 20),
+                    const SizedBox(width: 8),
                     Text(
-                      'TOP 5 ARTILHEIROS DA HISTÓRIA',
-                      style: TextStyle(
-                        color: AppColors.gold,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                      'TOP 5 - ${metric.toUpperCase()}',
+                      style: const TextStyle(color: AppColors.gold, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                if (top5Goals.isEmpty)
-                  const Text('Nenhum gol registrado ainda.', style: TextStyle(color: AppColors.subtext, fontSize: 12))
+                const SizedBox(height: 24),
+                if (top5.isEmpty)
+                  const Text('Nenhum dado registrado para esta métrica.', style: TextStyle(color: AppColors.subtext, fontSize: 12))
                 else
-                  ...top5Goals.map((entry) {
-                    final maxG = top5Goals.first.value['goals']!;
-                    final ratio = maxG == 0 ? 0.0 : entry.value['goals']! / maxG;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(entry.key, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text('${entry.value['goals']!} Gols', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 13)),
-                            ],
+                  SizedBox(
+                    height: 200,
+                    child: BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: top5.first.value[metric]!.toDouble() * 1.2,
+                        barTouchData: BarTouchData(
+                          enabled: true,
+                          touchTooltipData: BarTouchTooltipData(
+                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                              return BarTooltipItem(
+                                '${top5[group.x.toInt()].key}\n',
+                                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                children: <TextSpan>[
+                                  TextSpan(
+                                    text: '${(rod.toY - 1).round()} $metric',
+                                    style: const TextStyle(color: AppColors.gold, fontSize: 11, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: SizedBox(
-                              height: 10,
-                              child: LinearProgressIndicator(
-                                value: ratio,
-                                backgroundColor: AppColors.surfaceHigh,
-                                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.gold),
-                              ),
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (double value, TitleMeta meta) {
+                                final text = top5[value.toInt()].key;
+                                final initials = text.length > 4 ? text.substring(0, 4) : text;
+                                return SideTitleWidget(
+                                  meta: meta,
+                                  space: 4.0,
+                                  child: Text(initials, style: const TextStyle(color: AppColors.subtext, fontSize: 10, fontWeight: FontWeight.bold)),
+                                );
+                              },
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  }),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Top Garçons Chart Card
-          CustomCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.sports_score, color: AppColors.secondary, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'TOP 5 GARÇONS (ASSISTÊNCIAS)',
-                      style: TextStyle(
-                        color: AppColors.secondary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
+                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        ),
+                        borderData: FlBorderData(show: false),
+                        gridData: const FlGridData(show: false),
+                        barGroups: top5.asMap().entries.map((e) {
+                          return BarChartGroupData(
+                            x: e.key,
+                            barRods: [
+                              BarChartRodData(
+                                toY: e.value.value[metric]!.toDouble() + 1, // +1 for visual effect if value is 0 but shouldn't happen due to filter
+                                color: AppColors.primary,
+                                width: 22,
+                                borderRadius: const BorderRadius.only(topLeft: Radius.circular(6), topRight: Radius.circular(6)),
+                                backDrawRodData: BackgroundBarChartRodData(
+                                  show: true,
+                                  toY: top5.first.value[metric]!.toDouble() * 1.2,
+                                  color: AppColors.surfaceHigh,
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (top5Assists.isEmpty)
-                  const Text('Nenhuma assistência registrada ainda.', style: TextStyle(color: AppColors.subtext, fontSize: 12))
-                else
-                  ...top5Assists.map((entry) {
-                    final maxA = top5Assists.first.value['assists']!;
-                    final ratio = maxA == 0 ? 0.0 : entry.value['assists']! / maxA;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(entry.key, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text('${entry.value['assists']!} Assists', style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold, fontSize: 13)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: SizedBox(
-                              height: 10,
-                              child: LinearProgressIndicator(
-                                value: ratio,
-                                backgroundColor: AppColors.surfaceHigh,
-                                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.secondary),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+                  ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
 class _ByTournamentTab extends ConsumerWidget {
-  const _ByTournamentTab();
+  final GameTemplate template;
+  const _ByTournamentTab({required this.template});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tournaments = ref.watch(tournamentsProvider);
+    final tournaments = ref.watch(tournamentsProvider).where((t) => t.gameTemplate == template.name).toList();
 
     if (tournaments.isEmpty) {
-      return const Center(
-        child: Text('Nenhum torneio cadastrado.', style: TextStyle(color: AppColors.subtext)),
-      );
+      return const Center(child: Text('Nenhum torneio cadastrado nesta modalidade.', style: TextStyle(color: AppColors.subtext)));
     }
 
     return ListView.separated(
@@ -354,116 +377,89 @@ class _ByTournamentTab extends ConsumerWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final t = tournaments[index];
-        final isFinished = t.isFinished;
+        final activeMetrics = TemplateMetrics.metrics[template] ?? [];
 
-        final totals = <String, Map<String, int>>{};
+        final tTotals = <String, Map<String, int>>{};
         for (final p in t.playerNames) {
-          totals[p] = {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0};
+          tTotals[p] = {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0};
         }
 
         for (final act in t.activities) {
-          if (act.mvp.isNotEmpty && totals.containsKey(act.mvp)) {
-            totals[act.mvp]!['mvps'] = (totals[act.mvp]!['mvps'] ?? 0) + 1;
+          if (act.mvp.isNotEmpty) {
+            tTotals.putIfAbsent(act.mvp, () => {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0});
+            tTotals[act.mvp]!['mvps'] = (tTotals[act.mvp]!['mvps'] ?? 0) + 1;
           }
           for (final pName in act.participants) {
-            if (totals.containsKey(pName)) {
-              totals[pName]!['matches'] = (totals[pName]!['matches'] ?? 0) + 1;
-            }
+            tTotals.putIfAbsent(pName, () => {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0});
+            tTotals[pName]!['matches'] = (tTotals[pName]!['matches'] ?? 0) + 1;
           }
           for (final m in act.matches) {
             m.stats.forEach((pName, s) {
-              if (totals.containsKey(pName)) {
-                totals[pName]!['goals'] = (totals[pName]!['goals'] ?? 0) + s.goals;
-                totals[pName]!['assists'] = (totals[pName]!['assists'] ?? 0) + s.assists;
+              tTotals.putIfAbsent(pName, () => {'matches': 0, 'mvps': 0, for (var m in activeMetrics) m: 0});
+              for (var metric in activeMetrics) {
+                tTotals[pName]![metric] = (tTotals[pName]![metric] ?? 0) + (s.customStats[metric] ?? 0);
               }
             });
           }
         }
 
-        int maxGoals = -1; String? topGoalsPlayer;
-        int maxAssists = -1; String? topAssistsPlayer;
-        int maxMatches = -1; String? topMatchesPlayer;
-        int maxMvps = -1; String? topMvpPlayer;
-
-        if (isFinished) {
-          for (final pName in t.playerNames) {
-            final p = totals[pName]!;
-            if (p['goals']! > maxGoals && p['goals']! > 0) { maxGoals = p['goals']!; topGoalsPlayer = pName; }
-            if (p['assists']! > maxAssists && p['assists']! > 0) { maxAssists = p['assists']!; topAssistsPlayer = pName; }
-            if (p['matches']! > maxMatches && p['matches']! > 0) { maxMatches = p['matches']!; topMatchesPlayer = pName; }
-            if (p['mvps']! > maxMvps && p['mvps']! > 0) { maxMvps = p['mvps']!; topMvpPlayer = pName; }
-          }
-        }
+        final sortMetric = activeMetrics.isNotEmpty ? activeMetrics.first : 'matches';
+        final sortedPlayers = tTotals.keys.toList()
+          ..sort((a, b) => (tTotals[b]![sortMetric] ?? 0).compareTo(tTotals[a]![sortMetric] ?? 0));
 
         return CustomCard(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '🏆 ${t.name}',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  if (isFinished)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.danger.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text('FINALIZADO', style: TextStyle(color: AppColors.danger, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                ],
+              Text(
+                t.name,
+                style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.5),
               ),
-              const Divider(color: AppColors.border, height: 16),
-              ...t.playerNames.map((pName) {
-                final p = totals[pName] ?? {'matches': 0, 'goals': 0, 'assists': 0, 'mvps': 0};
-
-                RankType? rankType;
-                String? rankLabel;
-
-                if (isFinished) {
-                  if (pName == topGoalsPlayer) {
-                    rankType = RankType.goals;
-                    rankLabel = 'Artilheiro (${p['goals']} Gols)';
-                  } else if (pName == topAssistsPlayer) {
-                    rankType = RankType.assists;
-                    rankLabel = 'Garçom (${p['assists']} Assist)';
-                  } else if (pName == topMatchesPlayer) {
-                    rankType = RankType.matches;
-                    rankLabel = 'Maratonista (${p['matches']} Jogos)';
-                  } else if (pName == topMvpPlayer) {
-                    rankType = RankType.mvp;
-                    rankLabel = 'Melhor Jogador (${p['mvps']} MVPs)';
-                  }
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 12),
+              if (sortedPlayers.isEmpty)
+                const Text('Nenhum dado cadastrado.', style: TextStyle(color: AppColors.subtext))
+              else
+                ...sortedPlayers.take(10).map((pName) {
+                  final p = tTotals[pName]!;
+                  final rank = sortedPlayers.indexOf(pName) + 1;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          child: Text(
+                            '$rankº',
+                            style: TextStyle(
+                              color: rank == 1 ? AppColors.gold : AppColors.subtext,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            pName,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Row(
                           children: [
-                            Text(pName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                            if (rankType != null && rankLabel != null) ...[
-                              const SizedBox(height: 2),
-                              RankBadge(type: rankType, label: rankLabel),
-                            ],
+                            if (activeMetrics.isNotEmpty)
+                              Text(
+                                '${p[activeMetrics.first]} ${activeMetrics.first}',
+                                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
+                            const SizedBox(width: 8),
+                            Text('⭐ ${p['mvps']}', style: const TextStyle(color: AppColors.subtext, fontSize: 12)),
                           ],
                         ),
-                      ),
-                      Text(
-                        '🎮 ${p['matches']} J | ⚽ ${p['goals']} G | 👟 ${p['assists']} A | ⭐ ${p['mvps']} MVP',
-                        style: const TextStyle(color: AppColors.subtext, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                      ],
+                    ),
+                  );
+                }).toList(),
             ],
           ),
         );

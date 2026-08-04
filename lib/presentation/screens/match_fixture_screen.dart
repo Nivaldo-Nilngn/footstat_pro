@@ -11,11 +11,13 @@ import '../widgets/primary_button.dart';
 class MatchFixtureScreen extends ConsumerStatefulWidget {
   final int tournamentId;
   final int activityId;
+  final int? matchId;
 
   const MatchFixtureScreen({
     super.key,
     required this.tournamentId,
     required this.activityId,
+    this.matchId,
   });
 
   @override
@@ -60,6 +62,26 @@ class _MatchFixtureScreenState extends ConsumerState<MatchFixtureScreen> {
     if (actList.isEmpty) return;
 
     final act = actList.first;
+
+    if (widget.matchId != null) {
+      final matchesList = act.matches.where((m) => m.id == widget.matchId).toList();
+      if (matchesList.isNotEmpty) {
+        final match = matchesList.first;
+        _teamAController.text = match.teamAName;
+        _teamBController.text = match.teamBName;
+        _teamAPlayers.addAll(match.teamAPlayers);
+        _teamBPlayers.addAll(match.teamBPlayers);
+        
+        if (match.stats.isNotEmpty) {
+          _localPlayerStats.addAll(match.stats);
+        }
+        
+        setState(() {
+          _isConfigured = true;
+        });
+        return;
+      }
+    }
 
     if (act.matches.isNotEmpty) {
       final lastMatch = act.matches.last;
@@ -127,6 +149,7 @@ class _MatchFixtureScreenState extends ConsumerState<MatchFixtureScreen> {
     ref.read(liveMatchProvider.notifier).initMatch(
           tournamentId: widget.tournamentId,
           activityId: widget.activityId,
+          matchId: widget.matchId,
           teamAName: _teamAController.text.trim(),
           teamBName: _teamBController.text.trim(),
           durationMinutes: _selectedDurationMinutes,
@@ -149,10 +172,14 @@ class _MatchFixtureScreenState extends ConsumerState<MatchFixtureScreen> {
   }
 
   void _saveMatchFixture(Map<String, MatchStats> stats) async {
+    final liveState = ref.read(liveMatchProvider);
+    
     await ref.read(tournamentsProvider.notifier).saveMatch(
           widget.tournamentId,
           widget.activityId,
+          widget.matchId ?? DateTime.now().millisecondsSinceEpoch,
           stats,
+          liveState.timelineEvents,
         );
 
     ref.read(liveMatchProvider.notifier).closeMatch();

@@ -82,7 +82,10 @@ class CsvHelper {
           playerNames.add(pName);
           final goals = int.tryParse(cols.length > 2 ? cols[2] : '0') ?? 0;
           final assists = int.tryParse(cols.length > 3 ? cols[3] : '0') ?? 0;
-          importedMatchStats[pName] = MatchStats(goals: goals, assists: assists);
+          importedMatchStats[pName] = MatchStats(customStats: {
+            'Gols': goals,
+            'Assistências': assists,
+          });
         }
       }
     }

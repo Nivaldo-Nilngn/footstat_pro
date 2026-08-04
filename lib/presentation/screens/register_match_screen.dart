@@ -24,6 +24,7 @@ class RegisterMatchScreen extends ConsumerStatefulWidget {
 
 class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
   final Map<String, MatchStats> _tempStats = {};
+  List<String> _activeMetrics = [];
   Timer? _timer;
   int _secondsElapsed = 0;
   bool _isTimerRunning = false;
@@ -50,10 +51,12 @@ class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
     if (actList.isEmpty) return;
 
     final act = actList.first;
+    _activeMetrics = List.from(act.activeMetrics);
+    
     final activePlayers = act.participants.isNotEmpty ? act.participants : t.playerNames;
 
     for (final p in activePlayers) {
-      _tempStats[p] = const MatchStats(goals: 0, assists: 0, goalTimestamps: []);
+      _tempStats[p] = const MatchStats(goalTimestamps: [], customStats: {});
     }
   }
 
@@ -83,33 +86,29 @@ class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
     return '$m:$s';
   }
 
-  void _updateStat(String pName, String field, int delta) {
+  void _updateStat(String pName, String metric, int delta) {
     setState(() {
       final current = _tempStats[pName] ?? const MatchStats();
-      if (field == 'goals') {
-        final newGoals = (current.goals + delta).clamp(0, 99);
-        final List<int> timestamps = List.from(current.goalTimestamps);
+      final map = Map<String, int>.from(current.customStats);
+      final oldVal = map[metric] ?? 0;
+      
+      // Prevent negative values
+      map[metric] = (oldVal + delta).clamp(0, 999);
 
+      // Preserve timestamps for Gols retro-compatibility if the template uses it
+      List<int> timestamps = List.from(current.goalTimestamps);
+      if (metric == 'Gols') {
         if (delta > 0) {
           timestamps.add(_secondsElapsed);
         } else if (timestamps.isNotEmpty) {
           timestamps.removeLast();
         }
-
-        _tempStats[pName] = current.copyWith(
-          goals: newGoals,
-          goalTimestamps: timestamps,
-        );
-      } else if (field == 'assists') {
-        final newAssists = (current.assists + delta).clamp(0, 99);
-        _tempStats[pName] = current.copyWith(assists: newAssists);
-      } else if (field == 'yellowCards') {
-        final newY = (current.yellowCards + delta).clamp(0, 5);
-        _tempStats[pName] = current.copyWith(yellowCards: newY);
-      } else if (field == 'redCards') {
-        final newR = (current.redCards + delta).clamp(0, 2);
-        _tempStats[pName] = current.copyWith(redCards: newR);
       }
+
+      _tempStats[pName] = current.copyWith(
+        customStats: map,
+        goalTimestamps: timestamps,
+      );
     });
   }
 
@@ -135,7 +134,7 @@ class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Partida salva com sucesso! ⚽'),
+          content: Text('Partida salva com sucesso! 🏆'),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -143,12 +142,68 @@ class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
     }
   }
 
+  Widget _buildMetricCounter(String pName, String metric, int value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              metric,
+              style: const TextStyle(
+                color: AppColors.subtext,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.remove_circle_outline, color: AppColors.subtext, size: 22),
+                onPressed: () => _updateStat(pName, metric, -1),
+              ),
+              Container(
+                width: 36,
+                alignment: Alignment.center,
+                child: Text(
+                  '$value',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+              IconButton(
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.add_circle, color: AppColors.primary, size: 22),
+                onPressed: () => _updateStat(pName, metric, 1),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('⚽ Placar ao Vivo & Cronômetro'),
+        title: const Text('🏆 Placar ao Vivo'),
         actions: [
           IconButton(
             icon: const Icon(Icons.casino, color: AppColors.primary),
@@ -231,7 +286,7 @@ class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
               Expanded(
                 child: ListView.separated(
                   itemCount: _tempStats.keys.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final pName = _tempStats.keys.elementAt(index);
                     final stats = _tempStats[pName]!;
@@ -245,8 +300,8 @@ class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
                           Row(
                             children: [
                               Container(
-                                width: 32,
-                                height: 32,
+                                width: 36,
+                                height: 36,
                                 decoration: BoxDecoration(
                                   color: AppColors.primary.withOpacity(0.15),
                                   shape: BoxShape.circle,
@@ -258,211 +313,42 @@ class _RegisterMatchScreenState extends ConsumerState<RegisterMatchScreen> {
                                     style: const TextStyle(
                                       color: AppColors.primary,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   pName,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 15,
+                                    fontSize: 16,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              // Gols counter
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceHigh,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.gold.withOpacity(0.4)),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Row(
-                                        children: [
-                                          Icon(Icons.sports_soccer, color: AppColors.gold, size: 16),
-                                          SizedBox(width: 4),
-                                          Text('Gols', style: TextStyle(color: AppColors.subtext, fontSize: 11, fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.remove_circle_outline, color: AppColors.subtext, size: 20),
-                                            onPressed: () => _updateStat(pName, 'goals', -1),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                                            child: Text(
-                                              '${stats.goals}',
-                                              style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w900, fontSize: 16),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.add_circle, color: AppColors.gold, size: 20),
-                                            onPressed: () => _updateStat(pName, 'goals', 1),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              // Assists counter
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceHigh,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Row(
-                                        children: [
-                                          Icon(Icons.sports_score, color: AppColors.secondary, size: 16),
-                                          SizedBox(width: 4),
-                                          Text('Assist.', style: TextStyle(color: AppColors.subtext, fontSize: 11, fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.remove_circle_outline, color: AppColors.subtext, size: 20),
-                                            onPressed: () => _updateStat(pName, 'assists', -1),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                                            child: Text(
-                                              '${stats.assists}',
-                                              style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w900, fontSize: 16),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.add_circle, color: AppColors.secondary, size: 20),
-                                            onPressed: () => _updateStat(pName, 'assists', 1),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-
-                          // Cards row (Yellow & Red)
-                          Row(
-                            children: [
-                              // Yellow card
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceHigh,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.gold.withOpacity(0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text('🟨 Amarelo', style: TextStyle(color: AppColors.subtext, fontSize: 11, fontWeight: FontWeight.bold)),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.remove_circle_outline, color: AppColors.subtext, size: 18),
-                                            onPressed: () => _updateStat(pName, 'yellowCards', -1),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                                            child: Text(
-                                              '${stats.yellowCards}',
-                                              style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 14),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.add_circle, color: AppColors.gold, size: 18),
-                                            onPressed: () => _updateStat(pName, 'yellowCards', 1),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-
-                              // Red card
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceHigh,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.danger.withOpacity(0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text('🟥 Vermelho', style: TextStyle(color: AppColors.subtext, fontSize: 11, fontWeight: FontWeight.bold)),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.remove_circle_outline, color: AppColors.subtext, size: 18),
-                                            onPressed: () => _updateStat(pName, 'redCards', -1),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                                            child: Text(
-                                              '${stats.redCards}',
-                                              style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold, fontSize: 14),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            constraints: const BoxConstraints(),
-                                            padding: EdgeInsets.zero,
-                                            icon: const Icon(Icons.add_circle, color: AppColors.danger, size: 18),
-                                            onPressed: () => _updateStat(pName, 'redCards', 1),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Dynamic Metrics Grid
+                          if (_activeMetrics.isEmpty)
+                            const Center(child: Text('Nenhuma métrica configurada.', style: TextStyle(color: AppColors.subtext)))
+                          else
+                            GridView.count(
+                              crossAxisCount: 2,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              childAspectRatio: 2.8,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              children: _activeMetrics.map((metric) {
+                                final value = stats.customStats[metric] ?? 0;
+                                return _buildMetricCounter(pName, metric, value);
+                              }).toList(),
+                            ),
                         ],
                       ),
                     );

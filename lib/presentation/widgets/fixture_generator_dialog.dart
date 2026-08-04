@@ -7,8 +7,15 @@ import '../providers/tournaments_provider.dart';
 
 class FixtureGeneratorDialog extends ConsumerStatefulWidget {
   final int tournamentId;
+  final List<String> tournamentPlayers;
+  final bool isIndividualMode;
 
-  const FixtureGeneratorDialog({super.key, required this.tournamentId});
+  const FixtureGeneratorDialog({
+    super.key,
+    required this.tournamentId,
+    required this.tournamentPlayers,
+    required this.isIndividualMode,
+  });
 
   @override
   ConsumerState<FixtureGeneratorDialog> createState() => _FixtureGeneratorDialogState();
@@ -18,6 +25,9 @@ class _FixtureGeneratorDialogState extends ConsumerState<FixtureGeneratorDialog>
   final TextEditingController _locationController = TextEditingController(text: 'Campo Principal - Arena 1');
   final TextEditingController _dateController = TextEditingController(text: '15/08/2026');
   final TextEditingController _startTimeController = TextEditingController(text: '19:00');
+  
+  final TextEditingController _teamANameController = TextEditingController(text: 'Time Sem Camisa');
+  final TextEditingController _teamBNameController = TextEditingController(text: 'Time Com Camisa');
 
   bool _isSpinning = false;
   String _rouletteText = 'Toque em "GIRAR ROLETA" para sortear as chaves!';
@@ -27,14 +37,28 @@ class _FixtureGeneratorDialogState extends ConsumerState<FixtureGeneratorDialog>
     _locationController.dispose();
     _dateController.dispose();
     _startTimeController.dispose();
+    _teamANameController.dispose();
+    _teamBNameController.dispose();
     super.dispose();
   }
 
   void _runRouletteSpin() async {
     final teams = ref.read(teamsProvider);
-    if (teams.length < 2) {
+    final allChoices = <String>{};
+    if (!widget.isIndividualMode) {
+      for (var t in teams) {
+        allChoices.add(t.name);
+      }
+    }
+    for (var p in widget.tournamentPlayers) {
+      allChoices.add(p);
+    }
+    
+    final choicesList = allChoices.toList();
+
+    if (choicesList.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('É necessário ter ao menos 2 times no Banco de Times para o sorteio!')),
+        const SnackBar(content: Text('É necessário ter ao menos 2 participantes (times ou jogadores) para o sorteio!')),
       );
       return;
     }
@@ -47,8 +71,8 @@ class _FixtureGeneratorDialogState extends ConsumerState<FixtureGeneratorDialog>
     for (int i = 0; i < 15; i++) {
       await Future.delayed(Duration(milliseconds: 100 + i * 20));
       if (!mounted) return;
-      final t1 = teams[rand.nextInt(teams.length)].name;
-      final t2 = teams[rand.nextInt(teams.length)].name;
+      final t1 = choicesList[rand.nextInt(choicesList.length)];
+      final t2 = choicesList[rand.nextInt(choicesList.length)];
       setState(() {
         _rouletteText = '🎰 $t1  ⚡ VS ⚡  $t2';
       });
@@ -61,29 +85,68 @@ class _FixtureGeneratorDialogState extends ConsumerState<FixtureGeneratorDialog>
     int baseMinute = 0;
 
     int matchCount = 0;
-    for (int i = 0; i < teams.length; i++) {
-      for (int j = i + 1; j < teams.length; j++) {
-        final tA = teams[i];
-        final tB = teams[j];
+    
+    if (widget.isIndividualMode) {
+      // Pick-up game mode (Pelada): Divide players into 2 teams
+      final teamAName = _teamANameController.text.trim().isNotEmpty ? _teamANameController.text.trim() : 'Time A';
+      final teamBName = _teamBNameController.text.trim().isNotEmpty ? _teamBNameController.text.trim() : 'Time B';
+      
+      final half = choicesList.length ~/ 2;
+      final rosterA = choicesList.sublist(0, half);
+      final rosterB = choicesList.sublist(half);
+      
+      final matchTime = '${baseHour.toString().padLeft(2, "0")}:${baseMinute.toString().padLeft(2, "0")}';
 
-        final matchTime = '${baseHour.toString().padLeft(2, "0")}:${baseMinute.toString().padLeft(2, "0")}';
+      await ref.read(tournamentsProvider.notifier).addScheduledMatch(
+            tournamentId: widget.tournamentId,
+            teamAName: teamAName,
+            teamBName: teamBName,
+            teamAPlayers: rosterA,
+            teamBPlayers: rosterB,
+            matchDate: date,
+            matchTime: matchTime,
+            location: location,
+          );
+      matchCount++;
+      
+    } else {
+      // Teams mode: Round Robin
+      for (int i = 0; i < choicesList.length; i++) {
+        for (int j = i + 1; j < choicesList.length; j++) {
+          final tA = choicesList[i];
+          final tB = choicesList[j];
 
-        await ref.read(tournamentsProvider.notifier).addScheduledMatch(
-              tournamentId: widget.tournamentId,
-              teamAName: tA.name,
-              teamBName: tB.name,
-              teamAPlayers: tA.players,
-              teamBPlayers: tB.players,
-              matchDate: date,
-              matchTime: matchTime,
-              location: location,
-            );
+          List<String> rosterA = [tA];
+          try {
+            final teamAObj = teams.firstWhere((t) => t.name == tA);
+            rosterA = teamAObj.players;
+          } catch (_) {}
+          
+          List<String> rosterB = [tB];
+          try {
+            final teamBObj = teams.firstWhere((t) => t.name == tB);
+            rosterB = teamBObj.players;
+          } catch (_) {}
 
-        matchCount++;
-        baseMinute += 40;
-        if (baseMinute >= 60) {
-          baseHour += 1;
-          baseMinute -= 60;
+          final matchTime = '${baseHour.toString().padLeft(2, "0")}:${baseMinute.toString().padLeft(2, "0")}';
+
+          await ref.read(tournamentsProvider.notifier).addScheduledMatch(
+                tournamentId: widget.tournamentId,
+                teamAName: tA,
+                teamBName: tB,
+                teamAPlayers: rosterA,
+                teamBPlayers: rosterB,
+                matchDate: date,
+                matchTime: matchTime,
+                location: location,
+              );
+
+          matchCount++;
+          baseMinute += 40;
+          if (baseMinute >= 60) {
+            baseHour += 1;
+            baseMinute -= 60;
+          }
         }
       }
     }
@@ -101,6 +164,19 @@ class _FixtureGeneratorDialogState extends ConsumerState<FixtureGeneratorDialog>
   @override
   Widget build(BuildContext context) {
     final teams = ref.watch(teamsProvider);
+    
+    final allChoices = <String>{};
+    if (!widget.isIndividualMode) {
+      for (var t in teams) {
+        allChoices.add(t.name);
+      }
+    }
+    for (var p in widget.tournamentPlayers) {
+      allChoices.add(p);
+    }
+    
+    final choicesList = allChoices.toList();
+    final modeLabel = widget.isIndividualMode ? 'jogadores' : 'participantes (times/jogadores)';
 
     return AlertDialog(
       backgroundColor: AppColors.cardBackground,
@@ -120,16 +196,16 @@ class _FixtureGeneratorDialogState extends ConsumerState<FixtureGeneratorDialog>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Encontrados ${teams.length} times cadastrados para o sorteio automático:',
+            'Encontrados ${choicesList.length} $modeLabel cadastrados para o sorteio automático:',
             style: const TextStyle(color: AppColors.subtext, fontSize: 12),
           ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
-            children: teams.map((t) => Chip(
+            children: choicesList.map((c) => Chip(
               backgroundColor: AppColors.surfaceHigh,
-              avatar: const Icon(Icons.shield, color: AppColors.primary, size: 14),
-              label: Text(t.name, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+              avatar: Icon(widget.isIndividualMode ? Icons.person : Icons.shield, color: AppColors.primary, size: 14),
+              label: Text(c, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
             )).toList(),
           ),
           const SizedBox(height: 16),
@@ -156,6 +232,26 @@ class _FixtureGeneratorDialogState extends ConsumerState<FixtureGeneratorDialog>
               ),
             ],
           ),
+          if (widget.isIndividualMode) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _teamANameController,
+                    decoration: const InputDecoration(labelText: 'Nome do Time 1'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _teamBNameController,
+                    decoration: const InputDecoration(labelText: 'Nome do Time 2'),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 20),
 
           // Animated Wheel Box

@@ -10,6 +10,7 @@ import '../widgets/fixture_generator_dialog.dart';
 import '../widgets/manual_match_schedule_dialog.dart';
 import '../widgets/primary_button.dart';
 import 'match_fixture_screen.dart';
+import 'match_report_screen.dart';
 
 class TournamentDetailsScreen extends ConsumerStatefulWidget {
   final int tournamentId;
@@ -24,17 +25,25 @@ class TournamentDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScreen> {
-  void _openRouletteDialog() {
+  void _openRouletteDialog(List<String> players, bool isIndividualMode) {
     showDialog(
       context: context,
-      builder: (_) => FixtureGeneratorDialog(tournamentId: widget.tournamentId),
+      builder: (_) => FixtureGeneratorDialog(
+        tournamentId: widget.tournamentId,
+        tournamentPlayers: players,
+        isIndividualMode: isIndividualMode,
+      ),
     );
   }
 
-  void _openManualScheduleDialog() {
+  void _openManualScheduleDialog(List<String> players, bool isIndividualMode) {
     showDialog(
       context: context,
-      builder: (_) => ManualMatchScheduleDialog(tournamentId: widget.tournamentId),
+      builder: (_) => ManualMatchScheduleDialog(
+        tournamentId: widget.tournamentId,
+        tournamentPlayers: players,
+        isIndividualMode: isIndividualMode,
+      ),
     );
   }
 
@@ -139,6 +148,55 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                 const SizedBox(height: 16),
               ],
 
+              // Participants Section
+              CustomCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '👥 JOGADORES INSCRITOS (${t.playerNames.length})',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (t.playerNames.isEmpty)
+                      const Text(
+                        'Nenhum jogador inscrito neste torneio.',
+                        style: TextStyle(color: AppColors.subtext, fontSize: 12),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: t.playerNames.map((pName) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceHigh,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.person, size: 14, color: AppColors.primary),
+                                const SizedBox(width: 4),
+                                Text(pName, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
               // CTA Action Buttons: Sorteio Roleta + Agendar Confronto
               if (!isFinished) ...[
                 CustomCard(
@@ -166,7 +224,7 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                         children: [
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: _openRouletteDialog,
+                              onPressed: () => _openRouletteDialog(t.playerNames, t.isIndividualMode),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.gold,
                                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -181,7 +239,7 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                           const SizedBox(width: 10),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: _openManualScheduleDialog,
+                              onPressed: () => _openManualScheduleDialog(t.playerNames, t.isIndividualMode),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -379,35 +437,64 @@ class _TournamentDetailsScreenState extends ConsumerState<TournamentDetailsScree
                           const SizedBox(height: 16),
 
                           // CTA Button to Start Match Fixture
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => MatchFixtureScreen(
-                                    tournamentId: t.id,
-                                    activityId: actId,
-                                  ),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 42),
-                              backgroundColor: isMatchFinished ? AppColors.surfaceHigh : AppColors.primary,
-                            ),
-                            icon: Icon(
-                              isMatchFinished ? Icons.description : Icons.sports_soccer,
-                              color: isMatchFinished ? Colors.white : Colors.black,
-                              size: 18,
-                            ),
-                            label: Text(
-                              isMatchFinished ? 'Ver Súmula da Partida' : '⚽ Iniciar Partida / Arbitrar',
-                              style: TextStyle(
+                          if (t.isFinished && !isMatchFinished)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceHigh.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Partida Não Realizada (Torneio Encerrado)',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.subtext, fontWeight: FontWeight.bold),
+                              ),
+                            )
+                          else
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                if (isMatchFinished) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => MatchReportScreen(
+                                        tournamentId: t.id,
+                                        activityId: actId,
+                                        matchId: m.id,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => MatchFixtureScreen(
+                                        tournamentId: t.id,
+                                        activityId: actId,
+                                        matchId: m.id,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 42),
+                                backgroundColor: isMatchFinished ? AppColors.surfaceHigh : AppColors.primary,
+                              ),
+                              icon: Icon(
+                                isMatchFinished ? Icons.description : Icons.sports_soccer,
                                 color: isMatchFinished ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.bold,
+                                size: 18,
+                              ),
+                              label: Text(
+                                isMatchFinished ? 'Ver Súmula da Partida' : '⚽ Iniciar Partida / Arbitrar',
+                                style: TextStyle(
+                                  color: isMatchFinished ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     );

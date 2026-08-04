@@ -16,6 +16,7 @@ void main() async {
       storageBucket: "footstat-pro.firebasestorage.app",
       messagingSenderId: "650593577397",
       appId: "1:650593577397:web:62603a7fd1627081aad1fc",
+      databaseURL: "https://footstat-pro-default-rtdb.firebaseio.com",
     ),
   );
 
